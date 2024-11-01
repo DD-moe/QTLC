@@ -39,6 +39,7 @@
 
 <script>
     const scanner = new jscanify();
+    let srcMat = undefined;
 </script>
 
     <div id="plate_selection">
@@ -161,7 +162,7 @@
 
                         // Convert canvas pixel data to OpenCV Mat
                         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                        const srcMat = cv.matFromImageData(imageData);
+                        srcMat = cv.matFromImageData(imageData);
 
                         const contour = scanner.findPaperContour(srcMat);
                         const corners = scanner.getCornerPoints(contour);

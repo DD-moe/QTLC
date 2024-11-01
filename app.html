@@ -150,6 +150,7 @@
                 const thresh = new cv.Mat();
                 const contours = new cv.MatVector();
                 const hierarchy = new cv.Mat();
+                const boundingBoxes = [];
 
                 // Convert the image to grayscale
                 cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
@@ -163,13 +164,21 @@
                 // Find contours (potential blob areas)
                 cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-                // Draw bounding boxes around each blob
+                // Collect bounding boxes for each contour
                 for (let i = 0; i < contours.size(); i++) {
                     const rect = cv.boundingRect(contours.get(i));
+                    boundingBoxes.push(rect);
+                }
+
+                // Merge bounding boxes that are close to each other
+                const mergedBoxes = mergeBoundingBoxes(boundingBoxes, 10); // Adjust threshold as needed
+
+                // Draw merged bounding boxes filled with red
+                mergedBoxes.forEach(rect => {
                     const point1 = new cv.Point(rect.x, rect.y);
                     const point2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
                     cv.rectangle(src, point1, point2, new cv.Scalar(255, 0, 0, 255), -1); // Filled red rectangle
-                }
+                });
 
                 // Display the result on the canvas
                 cv.imshow(canvas, src);
@@ -181,7 +190,37 @@
                 thresh.delete();
                 contours.delete();
                 hierarchy.delete();
-            }            
+            }
+
+            // Function to merge bounding boxes based on proximity
+            function mergeBoundingBoxes(boxes, threshold) {
+                const merged = [];
+                while (boxes.length) {
+                    const box = boxes.pop();
+                    let mergedBox = box;
+                    
+                    for (let i = boxes.length - 1; i >= 0; i--) {
+                        if (isClose(boxes[i], mergedBox, threshold)) {
+                            mergedBox = {
+                                x: Math.min(mergedBox.x, boxes[i].x),
+                                y: Math.min(mergedBox.y, boxes[i].y),
+                                width: Math.max(mergedBox.x + mergedBox.width, boxes[i].x + boxes[i].width) - Math.min(mergedBox.x, boxes[i].x),
+                                height: Math.max(mergedBox.y + mergedBox.height, boxes[i].y + boxes[i].height) - Math.min(mergedBox.y, boxes[i].y),
+                            };
+                            boxes.splice(i, 1); // Remove merged box
+                        }
+                    }
+                    merged.push(mergedBox);
+                }
+                return merged;
+            }
+
+            // Function to check if two boxes are close based on a threshold
+            function isClose(box1, box2, threshold) {
+                const xClose = Math.abs(box1.x - box2.x) <= threshold || Math.abs((box1.x + box1.width) - (box2.x + box2.width)) <= threshold;
+                const yClose = Math.abs(box1.y - box2.y) <= threshold || Math.abs((box1.y + box1.height) - (box2.y + box2.height)) <= threshold;
+                return xClose && yClose;
+            }           
         </script>
     </div>
     

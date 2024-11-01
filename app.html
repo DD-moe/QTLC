@@ -231,6 +231,7 @@
     <input type="color" id="channelMultiplyer" value="#33bf0d">
     <canvas id="grayedCanvas"></canvas>
     <button onclick="trainIllumination()">train</button>
+    <canvas id="out_canvas"></canvas>
     <script>
         function processCanvas() {
             // Find the canvases
@@ -287,48 +288,88 @@
         }
 
         async function trainIllumination() {
-            // Shuffle the training data
-            const shuffledData = trainingData.sort(() => Math.random() - 0.5);
-            
-            // Select the first 1000 samples
-            const selectedData = shuffledData.slice(0, 100);
-            
-            const inputs = selectedData.map(data => [data.x, data.y]);
-            const outputs = selectedData.map(data => data.gray);
+    // Shuffle the training data
+    const shuffledData = trainingData.sort(() => Math.random() - 0.5);
+    
+    // Select the first 1000 samples
+    const selectedData = shuffledData.slice(0, 100);
+    
+    const inputs = selectedData.map(data => [data.x, data.y]);
+    const outputs = selectedData.map(data => data.gray);
 
-            // Define a simple model
-            const model = tf.sequential();
-            model.add(tf.layers.dense({ units: 32, activation: 'relu', inputShape: [2] })); // Hidden layer
-            model.add(tf.layers.dense({ units: 1 })); // Output layer
+    // Define a simple model
+    const model = tf.sequential();
+    model.add(tf.layers.dense({ units: 32, activation: 'relu', inputShape: [2] })); // Hidden layer
+    model.add(tf.layers.dense({ units: 1 })); // Output layer
 
-            // Compile the model
-            model.compile({
-                optimizer: 'adam',
-                loss: 'meanSquaredError',
-            });
+    // Compile the model
+    model.compile({
+        optimizer: 'adam',
+        loss: 'meanSquaredError',
+    });
 
-            // Convert input and output data to tensors
-            const xs = tf.tensor2d(inputs); // Shape [numSamples, 2]
-            const ys = tf.tensor2d(outputs, [outputs.length, 1]); // Shape [numSamples, 1]
+    // Convert input and output data to tensors
+    const xs = tf.tensor2d(inputs); // Shape [numSamples, 2]
+    const ys = tf.tensor2d(outputs, [outputs.length, 1]); // Shape [numSamples, 1]
 
-            // Train the model
-            await model.fit(xs, ys, {
-                epochs: 10, // You can adjust the number of epochs
-                batchSize: 1, // Adjust batch size if necessary
-                callbacks: {
-                    onEpochEnd: (epoch, logs) => {
-                        console.log(`Epoch ${epoch}: loss = ${logs.loss}`);
-                    },
-                },
-            });
+    // Train the model
+    await model.fit(xs, ys, {
+        epochs: 10, // You can adjust the number of epochs
+        batchSize: 1, // Adjust batch size if necessary
+        callbacks: {
+            onEpochEnd: (epoch, logs) => {
+                console.log(`Epoch ${epoch}: loss = ${logs.loss}`);
+            },
+        },
+    });
 
-            // Dispose of tensors to free up memory
-            xs.dispose();
-            ys.dispose();
-            console.log('Model trained!');
+    // Dispose of tensors to free up memory
+    xs.dispose();
+    ys.dispose();
+    console.log('Model trained!');
+
+    // After training, predict for a 100x100 canvas
+    predictAndRender(model);
+}
+
+async function predictAndRender(model) {
+    // Get the canvas element and context
+    const canvas = document.getElementById('out_canvas');
+    const ctx = canvas.getContext('2d');
+    const width = 100;
+    const height = 100;
+
+    // Create a new ImageData object to hold the pixel data
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+
+    // Loop through each pixel in the 100x100 canvas
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            // Create input tensor for the current pixel
+            const inputTensor = tf.tensor2d([[x, y]]); // Shape [1, 2]
+
+            // Make a prediction
+            const prediction = model.predict(inputTensor);
+            const grayValue = await prediction.data(); // Get the predicted gray value
+
+            // Set the pixel data (RGBA)
+            const index = (y * width + x) * 4; // Calculate index in the array
+            data[index] = grayValue[0];     // Red
+            data[index + 1] = grayValue[0]; // Green
+            data[index + 2] = grayValue[0]; // Blue
+            data[index + 3] = 255;           // Alpha (fully opaque)
+
+            // Dispose of the prediction tensor
+            prediction.dispose();
         }
+    }
 
-          
+    // Put the image data back to the canvas
+    ctx.putImageData(imageData, 0, 0);
+    console.log('Prediction rendered on canvas!');
+}
+
     
     </script>
     <div>

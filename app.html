@@ -6,28 +6,57 @@
     <script src="https://docs.opencv.org/4.7.0/opencv.js" async></script>
     <!-- warning: loading OpenCV can take some time. Load asynchronously -->
     <script src="https://cdn.jsdelivr.net/gh/ColonelParrot/jscanify@master/src/jscanify.min.js"></script>
-    <script src="https://git.1ioe.top/QTLC/displacable.js"></script>
+    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
     <style>
         /* Styling for the plate selection div and corner points */
         #plate_selection {
             position: relative;
-            display: inline-block;
+            display: block;
         }
 
         .corner-point {
-            width: 15px;
-            height: 15px;
+            width: 1%;
+            height: 1%;
             background-color: red;
+            opacity: 0.5;
             position: absolute;
             border-radius: 50%;
+            border-style: solid;
+            border-color: green;
             cursor: move;
+            position: absolute;
         }
     </style>
 </head>
 <body>
     <h1>Welcome to QTLC Scanner</h1>
     <input type="file" id="image_input" accept="image/*">
-    <div id="plate_selection"></div> <!-- Div to hold the image and corners -->
+
+    <div id="plate_selection">
+        <canvas id="raw_plate"></canvas>
+        <div class="corner-point" id="bottomLeftCorner" style="top: 99%; left: 1%;"></div>
+        <div class="corner-point" id="bottomRightCorner" style="top: 99%; left: 99%;"></div>
+        <div class="corner-point" id="topLeftCorner" style="top: 1%; left: 1%;"></div>
+        <div class="corner-point" id="topRightCorner" style="top: 1%; left: 99;"></div>
+        <script>
+            const position = { x: 0, y: 0 }
+
+            interact('.corner-point').draggable({
+            listeners: {
+                start (event) {
+                console.log(event.type, event.target)
+                },
+                move (event) {
+                position.x += event.dx
+                position.y += event.dy
+
+                event.target.style.transform =
+                    `translate(${position.x}px, ${position.y}px)`
+                },
+            }
+            })            
+        </script>
+    </div> <!-- Div to hold the image and corners -->
 
     <script>
         document.getElementById('image_input').addEventListener('change', function (event) {
@@ -41,7 +70,7 @@
 
                     img.onload = function () {
                         // Create a canvas to draw the image and get its pixel data
-                        const canvas = document.createElement('canvas');
+                        const canvas = document.getElementById('raw_plate');
                         canvas.width = img.width;
                         canvas.height = img.height;
                         const ctx = canvas.getContext('2d');
@@ -56,39 +85,12 @@
                         const corners = scanner.getCornerPoints(contour);
 
                         // Show image in plate_selection div
-                        const plateSelection = document.getElementById('plate_selection');
-                        plateSelection.innerHTML = "";  // Clear previous content
-                        plateSelection.appendChild(canvas); // Display image
+                        document.getElementById('bottomLeftCorner');
                         
                         console.log(corners);
 
-                        // Extract data and create HTML elements for each corner
-                        Object.entries(corners).forEach(([cornerName, cornerData], index) => {
-                            const cornerBox = document.createElement('div');
-                            cornerBox.className = 'corner-point';
-                            cornerBox.id = cornerName;
-                            cornerBox.style.left = `${cornerData.x}px`;
-                            cornerBox.style.top = `${cornerData.y}px`;
-                            cornerBox.setAttribute('draggable', true);
-                            
-                            // Optional: add a label for each corner
-                            const label = document.createElement('span');
-                            label.className = 'corner-label';
-                            label.innerText = cornerName;
-                            cornerBox.appendChild(label);
 
-                            plateSelection.appendChild(cornerBox);
-                        });
-
-                        // Make corner points draggable
-                        const displaceable = new Displaceable([
-                            document.getElementById('bottomLeftCorner'),
-                            document.getElementById('bottomRightCorner'),
-                            document.getElementById('topLeftCorner'),
-                            document.getElementById('topRightCorner')
-                        ]);
-
-                        srcMat.delete();  // Free memory after processing
+                        //srcMat.delete();  // Free memory after processing
                     };
                 };
 

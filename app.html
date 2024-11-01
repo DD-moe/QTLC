@@ -15,8 +15,8 @@
         }
 
         .corner-point {
-            width: 1%;
-            height: 1%;
+            width: 1rem;
+            height: 1rem;
             background-color: red;
             opacity: 0.5;
             position: absolute;
@@ -34,10 +34,10 @@
 
     <div id="plate_selection">
         <canvas id="raw_plate"></canvas>
-        <div class="corner-point" id="bottomLeftCorner" style="top: 99%; left: 1%;"></div>
-        <div class="corner-point" id="bottomRightCorner" style="top: 99%; left: 99%;"></div>
-        <div class="corner-point" id="topLeftCorner" style="top: 1%; left: 1%;"></div>
-        <div class="corner-point" id="topRightCorner" style="top: 1%; left: 99;"></div>
+        <div class="corner-point" id="bottomLeftCorner" style="transform: translate(99%, 0%);"></div>
+        <div class="corner-point" id="bottomRightCorner" style="transform: translate(99%, 99%);"></div>
+        <div class="corner-point" id="topLeftCorner" style="transform: translate(0%, 0%);"></div>
+        <div class="corner-point" id="topRightCorner" style="transform: translate(0%, 99%);"></div>
         <script>
             const position = { x: 0, y: 0 }
 

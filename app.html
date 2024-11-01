@@ -27,6 +27,8 @@
             border-color: green;
             cursor: move;
             position: absolute;
+            top: 0px;
+            left: 0px;
         }
     </style>
 </head>
@@ -35,7 +37,7 @@
     <input type="file" id="image_input" accept="image/*">
 
     <div id="plate_selection">
-        <canvas id="raw_plate"></canvas>
+        <canvas id="raw_plate" style="top: 0px; left: 0px;"></canvas>
         <div class="corner-point" id="bottomLeftCorner" data-x="0" data-y="0" name="BL"> <label for="BL">bottom left</label></div>
         <div class="corner-point" id="bottomRightCorner" data-x="0" data-y="0" name="BR"> <label for="BR">bottom right</label></div>
         <div class="corner-point" id="topLeftCorner" data-x="0" data-y="0" name="TL"> <label for="TL">top left</label></div>

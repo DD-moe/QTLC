@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TensorFlow.js Model</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+</head>
+<body>
+    <h1>Image Processing with TensorFlow.js</h1>
+    <input type="file" id="upload" accept="image/*"/>
+    <canvas id="canvas" width="100" height="100" style="display: none;"></canvas>
+    <canvas id="outputCanvas" width="100" height="100"></canvas>
+
+    <script>
+        async function loadAndPreprocessImage(file) {
+            const img = new Image();
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            img.src = URL.createObjectURL(file);
+
+            return new Promise((resolve) => {
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, 100, 100);
+                    const imageData = ctx.getImageData(0, 0, 100, 100);
+                    resolve(imageData);
+                };
+            });
+        }
+
+        function createInputTensor(imageData) {
+            const width = imageData.width;
+            const height = imageData.height;
+            const inputTensor = tf.tensor2d(new Float32Array(width * height * 2), [height, width, 2]);
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const normalizedX = x / width;
+                    const normalizedY = y / height;
+                    inputTensor.set([y, x, 0], normalizedX); // First channel: x position
+                    inputTensor.set([y, x, 1], normalizedY); // Second channel: y position
+                }
+            }
+
+            return inputTensor;
+        }
+
+        function buildModel() {
+            const model = tf.sequential();
+            // First convolutional layer with ReLU activation
+            model.add(tf.layers.conv2d({
+                inputShape: [100, 100, 2],
+                kernelSize: 1,
+                filters: 16,
+                activation: 'relu'
+            }));
+            // Second convolutional layer with sigmoid activation and 1 filter
+            model.add(tf.layers.conv2d({
+                kernelSize: 1,
+                filters: 1,
+                activation: 'sigmoid'
+            }));
+            // Reshape output to single-channel grayscale image
+            model.add(tf.layers.reshape({ targetShape: [100, 100, 1] }));
+            return model;
+        }
+
+        async function trainModel(model, inputTensor, originalImageData, threshold) {
+            const originalPixels = Array.from(originalImageData.data).filter((_, i) => i % 4 === 0); // Extract R channel
+            const outputTensor = tf.tensor2d(originalPixels, [100, 100, 1]).div(tf.scalar(255)); // Normalize to [0, 1]
+
+            model.compile({
+                optimizer: 'adam', // Use Adam optimizer
+                loss: 'meanSquaredError' // Mean squared error as the loss function
+            });
+
+            let previousLoss = Infinity; // Track previous loss for early stopping
+            let epoch = 0;
+
+            while (epoch < 100) { // Set a maximum number of epochs
+                const history = await model.fit(inputTensor.expandDims(0), outputTensor.expandDims(0), {
+                    epochs: 1, // Train for 1 epoch at a time
+                    batchSize: 1,
+                    verbose: 0 // No verbose output
+                });
+
+                const currentLoss = history.history.loss[0];
+                console.log(`Epoch: ${epoch + 1}, Loss: ${currentLoss}`);
+
+                // Check if the loss is below the threshold
+                if (currentLoss < threshold) {
+                    console.log('Loss threshold reached. Stopping training.');
+                    break; // Stop training if loss is below threshold
+                }
+
+                // Check for improvement in loss
+                if (currentLoss >= previousLoss) {
+                    console.log('Loss is not improving. Stopping training.');
+                    break; // Stop training if loss is not improving
+                }
+
+                previousLoss = currentLoss;
+                epoch++;
+            }
+        }
+
+        async function processImage(file) {
+            const imageData = await loadAndPreprocessImage(file);
+            const inputTensor = createInputTensor(imageData);
+            const model = buildModel();
+            const lossThreshold = 0.01; // Set your loss threshold here
+            await trainModel(model, inputTensor, imageData, lossThreshold);
+
+            // Predict and render output
+            const output = model.predict(inputTensor.expandDims(0));
+            const outputImageData = new Uint8ClampedArray(100 * 100 * 4);
+            const outputTensorData = output.dataSync();
+
+            for (let i = 0; i < outputTensorData.length; i++) {
+                const value = outputTensorData[i] * 255; // Scale to [0, 255]
+                outputImageData[i * 4] = value; // R
+                outputImageData[i * 4 + 1] = value; // G
+                outputImageData[i * 4 + 2] = value; // B
+                outputImageData[i * 4 + 3] = 255; // A
+            }
+
+            const outputCanvas = document.getElementById('outputCanvas');
+            const outputCtx = outputCanvas.getContext('2d');
+            const outputImage = new ImageData(outputImageData, 100, 100);
+            outputCtx.putImageData(outputImage, 0, 0);
+        }
+
+        document.getElementById('upload').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                processImage(file);
+            }
+        });
+    </script>
+</body>
+</html>

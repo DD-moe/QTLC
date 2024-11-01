@@ -62,13 +62,13 @@
             return model;
         }
 
-        async function trainModel(model, inputTensor, originalImageData, threshold, epochNR) {
+        async function trainModel(model, inputTensor, originalImageData, threshold, epochNR, learningRate) {
             const originalPixels = Array.from(originalImageData.data)
                 .filter((_, i) => i % 4 === 0); // Extract R channel
             const outputTensor = tf.tensor3d(originalPixels, [100, 100, 1]).div(tf.scalar(255));
-
+            const opt = tf.train.sgd(learningRate); // 0.01 learning rate, 0.001 decay rate
             model.compile({
-                optimizer: 'sgd',
+                optimizer: opt,
                 loss: 'meanSquaredError'
             });
 
@@ -101,7 +101,8 @@
             const model = buildModel();
             const lossThreshold = parseFloat(prompt('Type treshold value'));
             const epochs = parseInt(prompt('Type nr of epochs'));
-            await trainModel(model, inputTensor, imageData, lossThreshold, epochs);
+            const learningRate = parseFloat(prompt('Type learni ng rate'));
+            await trainModel(model, inputTensor, imageData, lossThreshold, epochs, learningRate);
 
             // Predict and render output
             const output = model.predict(inputTensor.expandDims(0)).squeeze();

@@ -22,11 +22,23 @@
                     img.src = e.target.result;
 
                     img.onload = function () {
+                        // Create a canvas to draw the image and get its pixel data
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        // Convert canvas pixel data to OpenCV Mat
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const srcMat = cv.matFromImageData(imageData);
+
                         const scanner = new jscanify();
-                        const contour = scanner.findPaperContour(img);
+                        const contour = scanner.findPaperContour(srcMat);
                         const corner = scanner.getCornerPoints(contour);
                         console.log(corner);
-                        //document.body.appendChild(highlightedCanvas);
+
+                        srcMat.delete();  // Free memory after processing
                     };
                 };
 

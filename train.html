@@ -61,7 +61,7 @@
             return model;
         }
 
-        async function trainModel(model, inputTensor, originalImageData, threshold) {
+        async function trainModel(model, inputTensor, originalImageData, threshold, epochNR) {
             const originalPixels = Array.from(originalImageData.data)
                 .filter((_, i) => i % 4 === 0); // Extract R channel
             const outputTensor = tf.tensor3d(originalPixels, [100, 100, 1]).div(tf.scalar(255));
@@ -74,7 +74,7 @@
             let previousLoss = Infinity;
             let epoch = 0;
 
-            while (epoch < 100) {
+            while (epoch < epochNR) {
                 const history = await model.fit(inputTensor.expandDims(0), outputTensor.expandDims(0), {
                     epochs: 1,
                     batchSize: 1,
@@ -89,11 +89,6 @@
                     break;
                 }
 
-                if (currentLoss >= previousLoss) {
-                    console.log('Loss is not improving. Stopping training.');
-                    break;
-                }
-
                 previousLoss = currentLoss;
                 epoch++;
             }
@@ -103,8 +98,9 @@
             const imageData = await loadAndPreprocessImage(file);
             const inputTensor = createInputTensor(imageData);
             const model = buildModel();
-            const lossThreshold = 0.01;
-            await trainModel(model, inputTensor, imageData, lossThreshold);
+            const lossThreshold = parseInt(prompt('Type treshold value'));
+            const epochs = parseInt(prompt('Type nr of epochs'));
+            await trainModel(model, inputTensor, imageData, lossThreshold, epochs);
 
             // Predict and render output
             const output = model.predict(inputTensor.expandDims(0)).squeeze();

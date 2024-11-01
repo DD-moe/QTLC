@@ -1,7 +1,7 @@
 // TODO:
 // 1. debounce resize and scroll events
 
-export default class Displaceable {
+class Displaceable {
 
     /**
      * @constructor

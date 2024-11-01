@@ -31,19 +31,20 @@
         function createInputTensor(imageData) {
             const width = imageData.width;
             const height = imageData.height;
-            const inputTensor = tf.tensor2d(new Float32Array(width * height * 2), [height, width, 2]);
+            const inputArray = new Float32Array(width * height * 2);
 
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
-                    const normalizedX = x / width;
-                    const normalizedY = y / height;
-                    inputTensor.set([y, x, 0], normalizedX); // First channel: x position
-                    inputTensor.set([y, x, 1], normalizedY); // Second channel: y position
+                    const index = (y * width + x) * 2;
+                    inputArray[index] = x / width;     // First channel: x position normalized
+                    inputArray[index + 1] = y / height; // Second channel: y position normalized
                 }
             }
 
-            return inputTensor;
+            // Create a 3D tensor with shape [height, width, 2]
+            return tf.tensor3d(inputArray, [height, width, 2]);
         }
+
 
         function buildModel() {
             const model = tf.sequential();

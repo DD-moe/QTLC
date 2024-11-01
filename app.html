@@ -36,29 +36,60 @@
 
     <div id="plate_selection">
         <canvas id="raw_plate"></canvas>
-        <div class="corner-point" id="bottomLeftCorner" style="transform: translate(99%, 0%);"></div>
-        <div class="corner-point" id="bottomRightCorner" style="transform: translate(99%, 99%);"></div>
-        <div class="corner-point" id="topLeftCorner" style="transform: translate(0%, 0%);"></div>
-        <div class="corner-point" id="topRightCorner" style="transform: translate(0%, 99%);"></div>
+        <div class="corner-point" id="bottomLeftCorner" data-x="0" data-y="0"></div>
+        <div class="corner-point" id="bottomRightCorner" data-x="0" data-y="0"></div>
+        <div class="corner-point" id="topLeftCorner" data-x="0" data-y="0"></div>
+        <div class="corner-point" id="topRightCorner" data-x="0" data-y="0"></div>
+    
         <script>
+            // Initialize position object to store x and y positions
             const position = { x: 0, y: 0 };
-
+    
+            // Set up interact.js draggable behavior
             interact('.corner-point').draggable({
-            listeners: {
-                start (event) {
-                console.log(event.type, event.target)
-                },
-                move (event) {
-                position.x += event.dx
-                position.y += event.dy
-
-                event.target.style.transform =
-                    `translate(${position.x}px, ${position.y}px)`
-                },
+                listeners: {
+                    start(event) {
+                        console.log(event.type, event.target);
+                    },
+                    move(event) {
+                        // Update x and y position based on drag movement
+                        position.x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.dx;
+                        position.y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.dy;
+    
+                        // Update data attributes with new position values
+                        event.target.setAttribute('data-x', position.x);
+                        event.target.setAttribute('data-y', position.y);
+    
+                        // Apply the translation for smooth dragging
+                        event.target.style.transform = `translate(${position.x}px, ${position.y}px)`;
+                    },
+                }
+            });
+    
+            // Function to update translation based on data-x and data-y attributes
+            function updatePosition(element) {
+                const x = parseFloat(element.getAttribute('data-x')) || 0;
+                const y = parseFloat(element.getAttribute('data-y')) || 0;
+                element.style.transform = `translate(${x}px, ${y}px)`;
             }
-            })            
+    
+            // Set up MutationObserver to watch for changes to data-x and data-y
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === "attributes" &&
+                        (mutation.attributeName === "data-x" || mutation.attributeName === "data-y")) {
+                        updatePosition(mutation.target);
+                    }
+                });
+            });
+    
+            // Observe each corner point for changes to data-x and data-y
+            document.querySelectorAll('.corner-point').forEach((element) => {
+                observer.observe(element, { attributes: true });
+            });
         </script>
-    </div> <!-- Div to hold the image and corners -->
+    </div>
+    
 
     <script>
         document.getElementById('image_input').addEventListener('change', function (event) {

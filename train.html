@@ -54,9 +54,10 @@
                 activation: 'relu'
             }));
             model.add(tf.layers.conv2d({
-                kernelSize: 1,
+                kernelSize: 2,
                 filters: 1,
-                activation: 'sigmoid'
+                activation: 'sigmoid',
+                padding: 'same'
             }));
             return model;
         }

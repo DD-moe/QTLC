@@ -59,6 +59,8 @@
                         const plateSelection = document.getElementById('plate_selection');
                         plateSelection.innerHTML = "";  // Clear previous content
                         plateSelection.appendChild(canvas); // Display image
+                        
+                        console.log(corners);
 
                         // Create 4 draggable boxes for each corner
                         corners.forEach((corner, index) => {

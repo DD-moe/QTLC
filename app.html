@@ -286,9 +286,15 @@
             return extractedData;
         }
 
-        async function trainIllumination(){
-            const inputs = trainingData.map(data => [data.x, data.y]);
-            const outputs = trainingData.map(data => data.gray);
+        async function trainIllumination() {
+            // Shuffle the training data
+            const shuffledData = trainingData.sort(() => Math.random() - 0.5);
+            
+            // Select the first 1000 samples
+            const selectedData = shuffledData.slice(0, 1000);
+            
+            const inputs = selectedData.map(data => [data.x, data.y]);
+            const outputs = selectedData.map(data => data.gray);
 
             // Define a simple model
             const model = tf.sequential();
@@ -305,22 +311,23 @@
             const xs = tf.tensor2d(inputs); // Shape [numSamples, 2]
             const ys = tf.tensor2d(outputs, [outputs.length, 1]); // Shape [numSamples, 1]
 
-                // Train the model
+            // Train the model
             await model.fit(xs, ys, {
-                    epochs: 1, // You can adjust the number of epochs
-                    batchSize: 1, // Adjust batch size if necessary
-                    callbacks: {
-                        onEpochEnd: (epoch, logs) => {
-                            console.log(`Epoch ${epoch}: loss = ${logs.loss}`);
-                        },
+                epochs: 1, // You can adjust the number of epochs
+                batchSize: 1, // Adjust batch size if necessary
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        console.log(`Epoch ${epoch}: loss = ${logs.loss}`);
                     },
-                });
+                },
+            });
 
-                // Dispose of tensors to free up memory
-                xs.dispose();
-                ys.dispose();
-                console.log('Model trained!');
-            }
+            // Dispose of tensors to free up memory
+            xs.dispose();
+            ys.dispose();
+            console.log('Model trained!');
+        }
+
           
     
     </script>

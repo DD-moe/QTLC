@@ -1,15 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>QTLC scanner</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
-<script src="https://docs.opencv.org/4.7.0/opencv.js" async></script>
-<!-- warning: loading OpenCV can take some time. Load asynchronously -->
-<script src="https://cdn.jsdelivr.net/gh/ColonelParrot/jscanify@master/src/jscanify.min.js"></script>
+    <title>QTLC Scanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://docs.opencv.org/4.7.0/opencv.js" async></script>
+    <!-- warning: loading OpenCV can take some time. Load asynchronously -->
+    <script src="https://cdn.jsdelivr.net/gh/ColonelParrot/jscanify@master/src/jscanify.min.js"></script>
 </head>
 <body>
-<h1>Welcome to QTLC scanner</h1>
+    <h1>Welcome to QTLC Scanner</h1>
+    <input type="file" id="image_input" accept="image/*">
+    
+    <script>
+        document.getElementById('image_input').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.src = e.target.result;
 
+                    img.onload = function () {
+                        const scanner = new jscanify();
+                        const highlightedCanvas = scanner.highlightPaper(img);
+                        document.body.appendChild(highlightedCanvas);
+                    };
+                };
+
+                reader.readAsDataURL(file);
+            } else {
+                alert("No file selected.");
+            }
+        });
+    </script>
 </body>
 </html>

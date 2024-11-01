@@ -171,7 +171,7 @@
                 }
 
                 // Merge bounding boxes that are close to each other
-                const mergedBoxes = mergeBoundingBoxes(boundingBoxes, 10); // Adjust threshold as needed
+                const mergedBoxes = mergeBoundingBoxes(boundingBoxes, 25); // Adjust threshold as needed
 
                 // Draw merged bounding boxes filled with red
                 mergedBoxes.forEach(rect => {

@@ -66,44 +66,44 @@
             return model;
         }
 
-        async function trainModel(model, inputTensor, originalImageData, threshold) {
-            const originalPixels = Array.from(originalImageData.data).filter((_, i) => i % 4 === 0); // Extract R channel
-            const outputTensor = tf.tensor2d(originalPixels, [100, 100, 1]).div(tf.scalar(255)); // Normalize to [0, 1]
+async function trainModel(model, inputTensor, originalImageData, threshold) {
+    const originalPixels = Array.from(originalImageData.data).filter((_, i) => i % 4 === 0); // Extract R channel
+    const outputTensor = tf.tensor2d(originalPixels, [100, 100]).div(tf.scalar(255)); // Normalize to [0, 1]
 
-            model.compile({
-                optimizer: 'adam', // Use Adam optimizer
-                loss: 'meanSquaredError' // Mean squared error as the loss function
-            });
+    model.compile({
+        optimizer: 'adam', // Use Adam optimizer
+        loss: 'meanSquaredError' // Mean squared error as the loss function
+    });
 
-            let previousLoss = Infinity; // Track previous loss for early stopping
-            let epoch = 0;
+    let previousLoss = Infinity; // Track previous loss for early stopping
+    let epoch = 0;
 
-            while (epoch < 100) { // Set a maximum number of epochs
-                const history = await model.fit(inputTensor.expandDims(0), outputTensor.expandDims(0), {
-                    epochs: 1, // Train for 1 epoch at a time
-                    batchSize: 1,
-                    verbose: 0 // No verbose output
-                });
+    while (epoch < 100) { // Set a maximum number of epochs
+        const history = await model.fit(inputTensor.expandDims(0), outputTensor.expandDims(0), {
+            epochs: 1, // Train for 1 epoch at a time
+            batchSize: 1,
+            verbose: 0 // No verbose output
+        });
 
-                const currentLoss = history.history.loss[0];
-                console.log(`Epoch: ${epoch + 1}, Loss: ${currentLoss}`);
+        const currentLoss = history.history.loss[0];
+        console.log(`Epoch: ${epoch + 1}, Loss: ${currentLoss}`);
 
-                // Check if the loss is below the threshold
-                if (currentLoss < threshold) {
-                    console.log('Loss threshold reached. Stopping training.');
-                    break; // Stop training if loss is below threshold
-                }
-
-                // Check for improvement in loss
-                if (currentLoss >= previousLoss) {
-                    console.log('Loss is not improving. Stopping training.');
-                    break; // Stop training if loss is not improving
-                }
-
-                previousLoss = currentLoss;
-                epoch++;
-            }
+        // Check if the loss is below the threshold
+        if (currentLoss < threshold) {
+            console.log('Loss threshold reached. Stopping training.');
+            break; // Stop training if loss is below threshold
         }
+
+        // Check for improvement in loss
+        if (currentLoss >= previousLoss) {
+            console.log('Loss is not improving. Stopping training.');
+            break; // Stop training if loss is not improving
+        }
+
+        previousLoss = currentLoss;
+        epoch++;
+    }
+}
 
         async function processImage(file) {
             const imageData = await loadAndPreprocessImage(file);

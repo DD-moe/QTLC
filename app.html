@@ -345,6 +345,7 @@ async function predictAndRender(model) {
 
     // Loop through each pixel in the 100x100 canvas
     for (let y = 0; y < height; y++) {
+        console.log('added new line')
         for (let x = 0; x < width; x++) {
             // Create input tensor for the current pixel
             const inputTensor = tf.tensor2d([[x, y]]); // Shape [1, 2]

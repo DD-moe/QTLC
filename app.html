@@ -13,7 +13,7 @@
             position: relative;
             display: block;
             height: 100%;
-            width: auto;
+            width: auto;      
         }
 
         .corner-point {
@@ -94,12 +94,47 @@
     </div>
     
     <div>
+        <canvas id="warpedCanvas"></canvas>
         <script>
             function extractPlate() {
-                //scanner.extractPaper(image, resultWidth, resultHeight, cornerPoints);
+                const BL = document.getElementById('bottomLeftCorner');
+                const BR = document.getElementById('bottomRightCorner'); 
+                const TL = document.getElementById('topLeftCorner');
+                const TR = document.getElementById('topRightCorner');
+    
+                // Extract the corner coordinates from data attributes
+                const corners = {
+                    bottomLeftCorner: {x: parseInt(BL.getAttribute('data-x')), y: parseInt(BL.getAttribute('data-y'))},
+                    bottomRightCorner: {x: parseInt(BR.getAttribute('data-x')), y: parseInt(BR.getAttribute('data-y'))},
+                    topLeftCorner: {x: parseInt(TL.getAttribute('data-x')), y: parseInt(TL.getAttribute('data-y'))},
+                    topRightCorner: {x: parseInt(TR.getAttribute('data-x')), y: parseInt(TR.getAttribute('data-y'))}
+                };
+    
+                // Calculate the widths and heights
+                const bottomWidth = Math.abs(corners.bottomRightCorner.x - corners.bottomLeftCorner.x);
+                const topWidth = Math.abs(corners.topRightCorner.x - corners.topLeftCorner.x);    
+                const width = Math.min(bottomWidth, topWidth); // Choose the smaller value for width
+    
+                const bottomHeight = Math.abs(corners.bottomRightCorner.y - corners.topRightCorner.y);
+                const topHeight = Math.abs(corners.bottomLeftCorner.y - corners.topLeftCorner.y);    
+                const height = Math.min(bottomHeight, topHeight); // Choose the smaller value for height                             
+    
+                // Extract the paper using the calculated width and height and corners data
+                const tempCanvas = scanner.extractPaper(srcMat, width, height, corners);
+    
+                // Get the 'warpedCanvas' and draw the extracted content onto it
+                const warpedCanvas = document.getElementById('warpedCanvas');
+                const context = warpedCanvas.getContext('2d');
+                warpedCanvas.width = width;
+                warpedCanvas.height = height;
+                context.drawImage(tempCanvas, 0, 0, width, height);
+    
+                // Destroy the temporary canvas element
+                tempCanvas.remove();
             }
         </script>
     </div>
+    
 
     <script>
         document.getElementById('image_input').addEventListener('change', function (event) {

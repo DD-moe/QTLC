@@ -23,8 +23,10 @@
 
                     img.onload = function () {
                         const scanner = new jscanify();
-                        const highlightedCanvas = scanner.highlightPaper(img);
-                        document.body.appendChild(highlightedCanvas);
+                        const contour = scanner.findPaperContour(img);
+                        const corner = scanner.getCornerPoints(contour);
+                        console.log(corner);
+                        //document.body.appendChild(highlightedCanvas);
                     };
                 };
 

@@ -36,10 +36,10 @@
 
     <div id="plate_selection">
         <canvas id="raw_plate"></canvas>
-        <div class="corner-point" id="bottomLeftCorner" data-x="0" data-y="0"></div>
-        <div class="corner-point" id="bottomRightCorner" data-x="0" data-y="0"></div>
-        <div class="corner-point" id="topLeftCorner" data-x="0" data-y="0"></div>
-        <div class="corner-point" id="topRightCorner" data-x="0" data-y="0"></div>
+        <div class="corner-point" id="bottomLeftCorner" data-x="0" data-y="0" name="BL"> <label for="BL">bottom left</label></div>
+        <div class="corner-point" id="bottomRightCorner" data-x="0" data-y="0" name="BR"> <label for="BR">bottom right</label></div>
+        <div class="corner-point" id="topLeftCorner" data-x="0" data-y="0" name="TL"> <label for="TL">top left</label></div>
+        <div class="corner-point" id="topRightCorner" data-x="0" data-y="0" name="TR"> <label for="TR">top right</label></div>
     
         <script>
             // Initialize position object to store x and y positions
@@ -49,7 +49,7 @@
             interact('.corner-point').draggable({
                 listeners: {
                     start(event) {
-                        console.log(event.type, event.target);
+                        //console.log(event.type, event.target);
                     },
                     move(event) {
                         // Update x and y position based on drag movement
@@ -118,7 +118,9 @@
                         const corners = scanner.getCornerPoints(contour);
 
                         // Show image in plate_selection div
-                        document.getElementById('bottomLeftCorner');
+                        const BL = document.getElementById('bottomLeftCorner');
+                        BL.setAttribute('data-x', corners.bottomLeftCorner.x);
+                        BL.setAttribute('data-y', corners.bottomLeftCorner.y);
                         
                         console.log(corners);
 

@@ -126,7 +126,7 @@
                 const height = Math.min(bottomHeight, topHeight); // Choose the smaller value for height                             
     
                 // Extract the paper using the calculated width and height and corners data
-                const tempCanvas = scanner.extractPaper(srcMat, width, height, corners);
+                const tempCanvas = scanner.extractPaper(raw_plate, width, height, corners);
     
                 // Get the 'warpedCanvas' and draw the extracted content onto it
                 const warpedCanvas = document.getElementById('warpedCanvas');

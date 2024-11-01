@@ -7,6 +7,7 @@
     <!-- warning: loading OpenCV can take some time. Load asynchronously -->
     <script src="https://cdn.jsdelivr.net/gh/ColonelParrot/jscanify@master/src/jscanify.min.js"></script>
     <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>  
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>    
     <style>
         /* Styling for the plate selection div and corner points */
         #plate_selection {
@@ -228,6 +229,7 @@
     </div>
     <input type="color" id="channelMultiplyer" value="#33bf0d">
     <canvas id="grayedCanvas"></canvas>
+    <button onclick="trainIllumination()">train</button>
     <script>
         function processCanvas() {
             // Find the canvases
@@ -282,6 +284,47 @@
             // Return the extracted data for training
             return extractedData;
         }
+
+        async function trainIllumination(){
+            const inputs = trainingData.map(data => [data.x, data.y]);
+            const outputs = trainingData.map(data => data.gray);
+
+            // Define a simple model
+            const model = tf.sequential();
+            model.add(tf.layers.dense({ units: 32, activation: 'relu', inputShape: [2] })); // Hidden layer
+            model.add(tf.layers.dense({ units: 1 })); // Output layer
+
+            // Compile the model
+            model.compile({
+                optimizer: 'adam',
+                loss: 'meanSquaredError',
+            });
+
+            // Convert input and output data to tensors
+            const xs = tf.tensor2d(inputs); // Shape [numSamples, 2]
+                const ys = tf.tensor2d(outputs, [outputs.length, 1]); // Shape [numSamples, 1]
+
+                // Train the model
+                await model.fit(xs, ys, {
+                    epochs: 1, // You can adjust the number of epochs
+                    batchSize: 32, // Adjust batch size if necessary
+                    callbacks: {
+                        onEpochEnd: (epoch, logs) => {
+                            console.log(`Epoch ${epoch}: loss = ${logs.loss}`);
+                        },
+                    },
+                });
+
+                // Dispose of tensors to free up memory
+                xs.dispose();
+                ys.dispose();
+            }
+
+            // Call the training function
+            trainModel().then(() => {
+                console.log('Model trained!');
+            });            
+    
     </script>
     <div>
 

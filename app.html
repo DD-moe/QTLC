@@ -43,6 +43,7 @@
 <script>
     const scanner = new jscanify();
     let srcMat = undefined;
+    let trainingData = undefined;
 </script>
 
     <div id="plate_selection">
@@ -141,7 +142,7 @@
     
                 // Destroy the temporary canvas element
                 tempCanvas.remove();
-                const trainingData = processCanvas();
+                trainingData = processCanvas();
                 processImage('warpedCanvas');
             }
 

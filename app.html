@@ -35,7 +35,11 @@
 <body>
     <h1>Welcome to QTLC Scanner</h1>
     <input type="file" id="image_input" accept="image/*">
-    <button onclick="extractPlate()"></button>
+    <button onclick="extractPlate()">Extract Plate</button>
+
+<script>
+    const scanner = new jscanify();
+</script>
 
     <div id="plate_selection">
         <canvas id="raw_plate" style="top: 0px; left: 0px;"></canvas>
@@ -45,6 +49,7 @@
         <div class="corner-point" id="topRightCorner" data-x="0" data-y="0" name="TR"> <label for="TR">top right</label></div>
     
         <script>
+
             // Initialize position object to store x and y positions
             const position = { x: 0, y: 0 };
     
@@ -158,7 +163,6 @@
                         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                         const srcMat = cv.matFromImageData(imageData);
 
-                        const scanner = new jscanify();
                         const contour = scanner.findPaperContour(srcMat);
                         const corners = scanner.getCornerPoints(contour);
 

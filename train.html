@@ -68,7 +68,7 @@
             const outputTensor = tf.tensor3d(originalPixels, [100, 100, 1]).div(tf.scalar(255));
 
             model.compile({
-                optimizer: 'adam',
+                optimizer: 'sgd',
                 loss: 'meanSquaredError'
             });
 

@@ -12,6 +12,8 @@
         #plate_selection {
             position: relative;
             display: block;
+            height: 100%;
+            width: auto;
         }
 
         .corner-point {
@@ -39,7 +41,7 @@
         <div class="corner-point" id="topLeftCorner" style="transform: translate(0%, 0%);"></div>
         <div class="corner-point" id="topRightCorner" style="transform: translate(0%, 99%);"></div>
         <script>
-            const position = { x: 0, y: 0 }
+            const position = { x: 0, y: 0 };
 
             interact('.corner-point').draggable({
             listeners: {

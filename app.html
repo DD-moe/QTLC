@@ -302,10 +302,10 @@
 
             // Convert input and output data to tensors
             const xs = tf.tensor2d(inputs); // Shape [numSamples, 2]
-                const ys = tf.tensor2d(outputs, [outputs.length, 1]); // Shape [numSamples, 1]
+            const ys = tf.tensor2d(outputs, [outputs.length, 1]); // Shape [numSamples, 1]
 
                 // Train the model
-                await model.fit(xs, ys, {
+            await model.fit(xs, ys, {
                     epochs: 1, // You can adjust the number of epochs
                     batchSize: 32, // Adjust batch size if necessary
                     callbacks: {
@@ -320,10 +320,8 @@
                 ys.dispose();
             }
 
-            // Call the training function
-            trainModel().then(() => {
-                console.log('Model trained!');
-            });            
+            console.log('Model trained!');
+          
     
     </script>
     <div>

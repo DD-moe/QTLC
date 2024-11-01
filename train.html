@@ -45,84 +45,78 @@
             return tf.tensor3d(inputArray, [height, width, 2]);
         }
 
-
         function buildModel() {
             const model = tf.sequential();
-            // First convolutional layer with ReLU activation
             model.add(tf.layers.conv2d({
                 inputShape: [100, 100, 2],
                 kernelSize: 1,
                 filters: 16,
                 activation: 'relu'
             }));
-            // Second convolutional layer with sigmoid activation and 1 filter
             model.add(tf.layers.conv2d({
                 kernelSize: 1,
                 filters: 1,
                 activation: 'sigmoid'
             }));
-            // Reshape output to single-channel grayscale image
-            model.add(tf.layers.reshape({ targetShape: [100, 100, 1] }));
             return model;
         }
 
-async function trainModel(model, inputTensor, originalImageData, threshold) {
-    const originalPixels = Array.from(originalImageData.data).filter((_, i) => i % 4 === 0); // Extract R channel
-    const outputTensor = tf.tensor2d(originalPixels, [100, 100]).div(tf.scalar(255)); // Normalize to [0, 1]
+        async function trainModel(model, inputTensor, originalImageData, threshold) {
+            const originalPixels = Array.from(originalImageData.data)
+                .filter((_, i) => i % 4 === 0); // Extract R channel
+            const outputTensor = tf.tensor3d(originalPixels, [100, 100, 1]).div(tf.scalar(255));
 
-    model.compile({
-        optimizer: 'adam', // Use Adam optimizer
-        loss: 'meanSquaredError' // Mean squared error as the loss function
-    });
+            model.compile({
+                optimizer: 'adam',
+                loss: 'meanSquaredError'
+            });
 
-    let previousLoss = Infinity; // Track previous loss for early stopping
-    let epoch = 0;
+            let previousLoss = Infinity;
+            let epoch = 0;
 
-    while (epoch < 100) { // Set a maximum number of epochs
-        const history = await model.fit(inputTensor.expandDims(0), outputTensor.expandDims(0), {
-            epochs: 1, // Train for 1 epoch at a time
-            batchSize: 1,
-            verbose: 0 // No verbose output
-        });
+            while (epoch < 100) {
+                const history = await model.fit(inputTensor.expandDims(0), outputTensor.expandDims(0), {
+                    epochs: 1,
+                    batchSize: 1,
+                    verbose: 0
+                });
 
-        const currentLoss = history.history.loss[0];
-        console.log(`Epoch: ${epoch + 1}, Loss: ${currentLoss}`);
+                const currentLoss = history.history.loss[0];
+                console.log(`Epoch: ${epoch + 1}, Loss: ${currentLoss}`);
 
-        // Check if the loss is below the threshold
-        if (currentLoss < threshold) {
-            console.log('Loss threshold reached. Stopping training.');
-            break; // Stop training if loss is below threshold
+                if (currentLoss < threshold) {
+                    console.log('Loss threshold reached. Stopping training.');
+                    break;
+                }
+
+                if (currentLoss >= previousLoss) {
+                    console.log('Loss is not improving. Stopping training.');
+                    break;
+                }
+
+                previousLoss = currentLoss;
+                epoch++;
+            }
         }
-
-        // Check for improvement in loss
-        if (currentLoss >= previousLoss) {
-            console.log('Loss is not improving. Stopping training.');
-            break; // Stop training if loss is not improving
-        }
-
-        previousLoss = currentLoss;
-        epoch++;
-    }
-}
 
         async function processImage(file) {
             const imageData = await loadAndPreprocessImage(file);
             const inputTensor = createInputTensor(imageData);
             const model = buildModel();
-            const lossThreshold = 0.01; // Set your loss threshold here
+            const lossThreshold = 0.01;
             await trainModel(model, inputTensor, imageData, lossThreshold);
 
             // Predict and render output
-            const output = model.predict(inputTensor.expandDims(0));
+            const output = model.predict(inputTensor.expandDims(0)).squeeze();
             const outputImageData = new Uint8ClampedArray(100 * 100 * 4);
             const outputTensorData = output.dataSync();
 
             for (let i = 0; i < outputTensorData.length; i++) {
-                const value = outputTensorData[i] * 255; // Scale to [0, 255]
-                outputImageData[i * 4] = value; // R
-                outputImageData[i * 4 + 1] = value; // G
-                outputImageData[i * 4 + 2] = value; // B
-                outputImageData[i * 4 + 3] = 255; // A
+                const value = outputTensorData[i] * 255;
+                outputImageData[i * 4] = value;
+                outputImageData[i * 4 + 1] = value;
+                outputImageData[i * 4 + 2] = value;
+                outputImageData[i * 4 + 3] = 255;
             }
 
             const outputCanvas = document.getElementById('outputCanvas');

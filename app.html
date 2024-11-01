@@ -62,13 +62,21 @@
                         
                         console.log(corners);
 
-                        // Create 4 draggable boxes for each corner
-                        corners.forEach((corner, index) => {
+                        // Extract data and create HTML elements for each corner
+                        Object.entries(corners).forEach(([cornerName, cornerData], index) => {
                             const cornerBox = document.createElement('div');
                             cornerBox.className = 'corner-point';
-                            cornerBox.id = `corner-${index + 1}`;
-                            cornerBox.style.left = `${corner.x}px`;
-                            cornerBox.style.top = `${corner.y}px`;
+                            cornerBox.id = cornerName;
+                            cornerBox.style.left = `${cornerData.x}px`;
+                            cornerBox.style.top = `${cornerData.y}px`;
+                            cornerBox.setAttribute('draggable', true);
+                            
+                            // Optional: add a label for each corner
+                            const label = document.createElement('span');
+                            label.className = 'corner-label';
+                            label.innerText = cornerName;
+                            cornerBox.appendChild(label);
+
                             plateSelection.appendChild(cornerBox);
                         });
 

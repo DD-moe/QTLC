@@ -291,7 +291,7 @@
             const shuffledData = trainingData.sort(() => Math.random() - 0.5);
             
             // Select the first 1000 samples
-            const selectedData = shuffledData.slice(0, 1000);
+            const selectedData = shuffledData.slice(0, 100);
             
             const inputs = selectedData.map(data => [data.x, data.y]);
             const outputs = selectedData.map(data => data.gray);
@@ -313,7 +313,7 @@
 
             // Train the model
             await model.fit(xs, ys, {
-                epochs: 1, // You can adjust the number of epochs
+                epochs: 10, // You can adjust the number of epochs
                 batchSize: 1, // Adjust batch size if necessary
                 callbacks: {
                     onEpochEnd: (epoch, logs) => {

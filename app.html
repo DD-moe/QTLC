@@ -172,7 +172,7 @@
                 }
 
                 // Merge bounding boxes that are close to each other
-                const treshold = parseInt(document.getElementById('spotTreshold'));
+                const treshold = parseInt(document.getElementById('spotTreshold').value);
                 const mergedBoxes = mergeBoundingBoxes(boundingBoxes, treshold); // Adjust threshold as needed
 
                 // Draw merged bounding boxes filled with red

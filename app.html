@@ -103,6 +103,7 @@
     
     <div>
         <canvas id="warpedCanvas"></canvas>
+        <input type="number" id="spotTreshold" value="16">
         <script>
             function extractPlate() {
                 const BL = document.getElementById('bottomLeftCorner');
@@ -171,7 +172,8 @@
                 }
 
                 // Merge bounding boxes that are close to each other
-                const mergedBoxes = mergeBoundingBoxes(boundingBoxes, 25); // Adjust threshold as needed
+                const treshold = parseInt(document.getElementById('spotTreshold'));
+                const mergedBoxes = mergeBoundingBoxes(boundingBoxes, treshold); // Adjust threshold as needed
 
                 // Draw merged bounding boxes filled with red
                 mergedBoxes.forEach(rect => {

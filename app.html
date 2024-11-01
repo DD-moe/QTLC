@@ -308,7 +308,7 @@
                 // Train the model
             await model.fit(xs, ys, {
                     epochs: 1, // You can adjust the number of epochs
-                    batchSize: 32, // Adjust batch size if necessary
+                    batchSize: 1, // Adjust batch size if necessary
                     callbacks: {
                         onEpochEnd: (epoch, logs) => {
                             console.log(`Epoch ${epoch}: loss = ${logs.loss}`);
@@ -319,9 +319,8 @@
                 // Dispose of tensors to free up memory
                 xs.dispose();
                 ys.dispose();
+                console.log('Model trained!');
             }
-
-            console.log('Model trained!');
           
     
     </script>

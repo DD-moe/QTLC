@@ -98,7 +98,7 @@
             const imageData = await loadAndPreprocessImage(file);
             const inputTensor = createInputTensor(imageData);
             const model = buildModel();
-            const lossThreshold = parseInt(prompt('Type treshold value'));
+            const lossThreshold = parseFloat(prompt('Type treshold value'));
             const epochs = parseInt(prompt('Type nr of epochs'));
             await trainModel(model, inputTensor, imageData, lossThreshold, epochs);
 

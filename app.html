@@ -143,41 +143,45 @@
             }
 
             function processImage(canvasName) {
-            const canvas = document.getElementById(canvasName);
-            const ctx = canvas.getContext('2d');
-            const src = cv.imread(canvas); // Read image from canvas
-            const gray = new cv.Mat();
-            const thresh = new cv.Mat();
-            const contours = new cv.MatVector();
-            const hierarchy = new cv.Mat();
+                const canvas = document.getElementById(canvasName);
+                const src = cv.imread(canvas); // Read image from canvas
+                const gray = new cv.Mat();
+                const blurred = new cv.Mat();
+                const thresh = new cv.Mat();
+                const contours = new cv.MatVector();
+                const hierarchy = new cv.Mat();
 
-            // Convert the image to grayscale
-            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+                // Convert the image to grayscale
+                cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
 
-            // Apply a binary threshold to get binary image
-            cv.threshold(gray, thresh, 127, 255, cv.THRESH_BINARY_INV);
+                // Apply Gaussian blur to reduce noise and enhance blob edges
+                cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
 
-            // Find contours (potential blob areas)
-            cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                // Use adaptive threshold to handle varying blob sizes and lighting conditions
+                cv.adaptiveThreshold(blurred, thresh, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
 
-            // Draw bounding boxes around each blob
-            for (let i = 0; i < contours.size(); i++) {
-                const rect = cv.boundingRect(contours.get(i));
-                const point1 = new cv.Point(rect.x, rect.y);
-                const point2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
-                cv.rectangle(src, point1, point2, new cv.Scalar(255, 0, 0, 255), 2); // Red color in RGBA
-            }
+                // Find contours (potential blob areas)
+                cv.findContours(thresh, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-            // Display the result on the canvas
-            cv.imshow(canvas, src);
+                // Draw bounding boxes around each blob
+                for (let i = 0; i < contours.size(); i++) {
+                    const rect = cv.boundingRect(contours.get(i));
+                    const point1 = new cv.Point(rect.x, rect.y);
+                    const point2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+                    cv.rectangle(src, point1, point2, new cv.Scalar(255, 0, 0, 255), -1); // Filled red rectangle
+                }
 
-            // Clean up
-            src.delete();
-            gray.delete();
-            thresh.delete();
-            contours.delete();
-            hierarchy.delete();
-        }            
+                // Display the result on the canvas
+                cv.imshow(canvas, src);
+
+                // Clean up
+                src.delete();
+                gray.delete();
+                blurred.delete();
+                thresh.delete();
+                contours.delete();
+                hierarchy.delete();
+            }            
         </script>
     </div>
     

@@ -35,6 +35,7 @@
 <body>
     <h1>Welcome to QTLC Scanner</h1>
     <input type="file" id="image_input" accept="image/*">
+    <button onclick="extractPlate()"></button>
 
     <div id="plate_selection">
         <canvas id="raw_plate" style="top: 0px; left: 0px;"></canvas>
@@ -92,6 +93,13 @@
         </script>
     </div>
     
+    <div>
+        <script>
+            function extractPlate() {
+                //scanner.extractPaper(image, resultWidth, resultHeight, cornerPoints);
+            }
+        </script>
+    </div>
 
     <script>
         document.getElementById('image_input').addEventListener('change', function (event) {
@@ -119,12 +127,20 @@
                         const contour = scanner.findPaperContour(srcMat);
                         const corners = scanner.getCornerPoints(contour);
 
-                        // Show image in plate_selection div
+                        // Show image in plate_selection div corner points
                         const BL = document.getElementById('bottomLeftCorner');
                         BL.setAttribute('data-x', corners.bottomLeftCorner.x);
                         BL.setAttribute('data-y', corners.bottomLeftCorner.y);
-                        
-                        console.log(corners);
+                        const BR = document.getElementById('bottomRightCorner');
+                        BR.setAttribute('data-x', corners.bottomRightCorner.x);
+                        BR.setAttribute('data-y', corners.bottomRightCorner.y);   
+                        const TL = document.getElementById('topLeftCorner');
+                        TL.setAttribute('data-x', corners.topLeftCorner.x);
+                        TL.setAttribute('data-y', corners.topLeftCorner.y);
+                        const TR = document.getElementById('topRightCorner');
+                        TR.setAttribute('data-x', corners.topRightCorner.x);
+                        TR.setAttribute('data-y', corners.topRightCorner.y);                                                                             
+                        //console.log(corners);
 
 
                         //srcMat.delete();  // Free memory after processing

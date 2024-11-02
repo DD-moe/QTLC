@@ -76,7 +76,7 @@
                 const currentMomentum = momentum[momentumStep][0];
                 if (epoch === currentMomentum) {
                     momentumStep++;
-                    opt = tf.train.momentum(learningRate, parseFloat([currentMomentum][1]));
+                    opt = tf.train.momentum(learningRate, parseFloat(momentum[currentMomentum][1]));
                     model.compile({
                         optimizer: opt,
                         loss: 'meanSquaredError'
@@ -109,7 +109,8 @@
             const lossThreshold = parseFloat(prompt('Type treshold value'));
             const epochs = parseInt(prompt('Type nr of epochs'));
             const learningRate = parseFloat(prompt('Type learning rate'));
-            const momentum = JSON.parse(prompt('Type training momentum'));
+            let momentum = JSON.parse(prompt('Type training momentum'));
+            momentum.unshift(momentum[0]); 
             await trainModel(model, inputTensor, imageData, lossThreshold, epochs, learningRate, momentum);
 
             // Predict and render output

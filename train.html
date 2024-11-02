@@ -57,9 +57,45 @@
                 kernelSize: 3,
                 filters: 1,
                 activation: 'sigmoid',
-                padding: 'same'
+                padding: 'valid'
             }));
             return model;
+        }
+
+        // Function to apply custom padding by copying neighboring rows/columns
+        function applyCustomPadding(tensor, padding) {
+            // Destructure the padding values for readability
+            const [topPad, bottomPad, leftPad, rightPad] = padding;
+
+            // Pad the top and bottom by repeating the first and last rows
+            let paddedTensor = tensor;
+
+            if (topPad > 0) {
+                const topRow = tensor.slice([0, 0, 0], [1, tensor.shape[1], tensor.shape[2]]);
+                const topPadding = topRow.tile([topPad, 1, 1]);
+                paddedTensor = topPadding.concat(paddedTensor, 0); // Concatenate along the height dimension
+            }
+
+            if (bottomPad > 0) {
+                const bottomRow = tensor.slice([tensor.shape[0] - 1, 0, 0], [1, tensor.shape[1], tensor.shape[2]]);
+                const bottomPadding = bottomRow.tile([bottomPad, 1, 1]);
+                paddedTensor = paddedTensor.concat(bottomPadding, 0);
+            }
+
+            // Pad the left and right by repeating the first and last columns
+            if (leftPad > 0) {
+                const leftCol = paddedTensor.slice([0, 0, 0], [paddedTensor.shape[0], 1, tensor.shape[2]]);
+                const leftPadding = leftCol.tile([1, leftPad, 1]);
+                paddedTensor = leftPadding.concat(paddedTensor, 1); // Concatenate along the width dimension
+            }
+
+            if (rightPad > 0) {
+                const rightCol = paddedTensor.slice([0, paddedTensor.shape[1] - 1, 0], [paddedTensor.shape[0], 1, tensor.shape[2]]);
+                const rightPadding = rightCol.tile([1, rightPad, 1]);
+                paddedTensor = paddedTensor.concat(rightPadding, 1);
+            }
+
+            return paddedTensor;
         }
 
         async function trainModel(model, inputTensor, originalImageData, threshold, epochNR, learningRate, momentum) {
@@ -67,6 +103,9 @@
                 .filter((_, i) => i % 4 === 0); // Extract R channel
             const outputTensor = tf.tensor3d(originalPixels, [100, 100, 1]).div(tf.scalar(255));
 
+            const padding = [1, 1, 1, 1]; // Change values as needed for desired padding 
+            const paddedTensor = applyCustomPadding(outputTensor, padding);
+ 
             let previousLoss = Infinity;
             let epoch = 0;
             let momentumStep = 0; 
@@ -83,7 +122,7 @@
                     });
                 }                    
 
-                const history = await model.fit(inputTensor.expandDims(0), outputTensor.expandDims(0), {
+                const history = await model.fit(inputTensor.expandDims(0), paddedTensor.expandDims(0), {
                     epochs: 1,
                     batchSize: 1,
                     verbose: 0

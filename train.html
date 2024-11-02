@@ -78,9 +78,9 @@
 
             while (epoch < epochNR) {
 
-                currentMomentum = momentum[momentumStep + 1][0];
+                const currentMomentum = momentum[momentumStep + 1][0];
                 if (epoch === currentMomentum) {
-                    currentMomentum++;
+                    momentumStep++;
                     opt = tf.train.momentum(learningRate, parseFloat([currentMomentum][1]));
                     model.compile({
                         optimizer: opt,

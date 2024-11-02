@@ -109,7 +109,7 @@
             const lossThreshold = parseFloat(prompt('Type treshold value'));
             const epochs = parseInt(prompt('Type nr of epochs'));
             const learningRate = parseFloat(prompt('Type learning rate'));
-            let momentum = JSON.parse(prompt('Type training momentum; \nPreviously used value: ' + localStorage.getItem("myCat")));
+            let momentum = JSON.parse(prompt('Type training momentum; \nPreviously used value: ' + localStorage.getItem("momentum")));
             momentum.unshift(momentum[0]);
             localStorage.setItem("momentum", JSON.stringify(momentum)); 
             await trainModel(model, inputTensor, imageData, lossThreshold, epochs, learningRate, momentum);

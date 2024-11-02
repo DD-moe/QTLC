@@ -66,7 +66,7 @@
             const originalPixels = Array.from(originalImageData.data)
                 .filter((_, i) => i % 4 === 0); // Extract R channel
             const outputTensor = tf.tensor3d(originalPixels, [100, 100, 1]).div(tf.scalar(255));
-            const opt = tf.train.momentum(learningRate, momentum)
+            const opt = tf.train.momentum(learningRate, parseFloat([0][1]))
             model.compile({
                 optimizer: opt,
                 loss: 'meanSquaredError'
@@ -74,8 +74,10 @@
 
             let previousLoss = Infinity;
             let epoch = 0;
+            let momentumStep = 0;
 
             while (epoch < epochNR) {
+                currentMomentum = 
                 const history = await model.fit(inputTensor.expandDims(0), outputTensor.expandDims(0), {
                     epochs: 1,
                     batchSize: 1,
@@ -102,7 +104,7 @@
             const lossThreshold = parseFloat(prompt('Type treshold value'));
             const epochs = parseInt(prompt('Type nr of epochs'));
             const learningRate = parseFloat(prompt('Type learning rate'));
-            const momentum = parseFloat(prompt('Type training momentum'));
+            const momentum = JSON.parse(prompt('Type training momentum'));
             await trainModel(model, inputTensor, imageData, lossThreshold, epochs, learningRate, momentum);
 
             // Predict and render output

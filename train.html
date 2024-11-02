@@ -104,12 +104,6 @@
                 .filter((_, i) => i % 4 === 0); // Extract R channel
             const outputTensor = tf.tensor3d(originalPixels, [100, 100, 1]).div(tf.scalar(255));
 
-            const padding = [1, 1, 1, 1]; // Change values as needed for desired padding 
-            const paddedTensor = applyCustomPadding(inputTensor, padding);
-
-            console.log(paddedTensor.shape);
-            console.log(outputTensor.shape); 
-
             let previousLoss = Infinity;
             let epoch = 0;
             let momentumStep = 0; 
@@ -126,7 +120,7 @@
                     });
                 }                    
 
-                const history = await model.fit(paddedTensor.expandDims(0), outputTensor.expandDims(0), {
+                const history = await model.fit(inputTensor.expandDims(0), outputTensor.expandDims(0), {
                     epochs: 1,
                     batchSize: 1,
                     verbose: 0
@@ -171,10 +165,15 @@
                 localStorage.setItem("momentum", JSON.stringify(momentum));
                 momentum.unshift(momentum[0]); 
             }
-            await trainModel(model, inputTensor, imageData, lossThreshold, epochs, learningRate, momentum);
+
+            const padding = [1, 1, 1, 1]; // Change values as needed for desired padding 
+            const paddedTensor = applyCustomPadding(inputTensor, padding);
+
+            await trainModel(model, paddedTensor, imageData, lossThreshold, epochs, learningRate, momentum);
 
             // Predict and render output
-            const output = model.predict(inputTensor.expandDims(0)).squeeze();
+
+            const output = model.predict(paddedTensor.expandDims(0)).squeeze();
             const outputImageData = new Uint8ClampedArray(100 * 100 * 4);
             const outputTensorData = output.dataSync();
 

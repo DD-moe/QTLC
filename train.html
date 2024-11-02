@@ -48,7 +48,7 @@
         function buildModel() {
             const model = tf.sequential();
             model.add(tf.layers.conv2d({
-                inputShape: [100, 100, 2],
+                inputShape: [102, 102, 2],
                 kernelSize: 1,
                 filters: 16,
                 activation: 'relu',

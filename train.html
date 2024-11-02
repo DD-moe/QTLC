@@ -105,10 +105,7 @@
             const outputTensor = tf.tensor3d(originalPixels, [100, 100, 1]).div(tf.scalar(255));
 
             const padding = [1, 1, 1, 1]; // Change values as needed for desired padding 
-            const paddedTensor = applyCustomPadding(outputTensor, padding);
-
-            console.log(paddedTensor.shape);
-            console.log(inputTensor.shape);
+            const paddedTensor = applyCustomPadding(inputTensor, padding);
 
             let previousLoss = Infinity;
             let epoch = 0;
@@ -126,7 +123,7 @@
                     });
                 }                    
 
-                const history = await model.fit(inputTensor.expandDims(0), paddedTensor.expandDims(0), {
+                const history = await model.fit(paddedTensor.expandDims(0), outputTensor.expandDims(0), {
                     epochs: 1,
                     batchSize: 1,
                     verbose: 0

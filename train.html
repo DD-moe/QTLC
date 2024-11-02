@@ -54,7 +54,7 @@
                 activation: 'relu'
             }));
             model.add(tf.layers.conv2d({
-                kernelSize: 2,
+                kernelSize: 3,
                 filters: 1,
                 activation: 'sigmoid',
                 padding: 'same'
@@ -100,18 +100,34 @@
                 previousLoss = currentLoss;
                 epoch++;
             }
+            model.summary();
         }
 
         async function processImage(file) {
             const imageData = await loadAndPreprocessImage(file);
             const inputTensor = createInputTensor(imageData);
             const model = buildModel();
-            const lossThreshold = parseFloat(prompt('Type treshold value'));
-            const epochs = parseInt(prompt('Type nr of epochs'));
-            const learningRate = parseFloat(prompt('Type learning rate'));
+            // input treshold value to stop training
+            const lossThreshold = parseFloat(prompt('Type treshold value; \nPreviously used value: ' + localStorage.getItem("lossThreshold")));
+            if (lossThreshold != null) {
+                localStorage.setItem("lossThreshold", lossThreshold);
+            }
+            // iinput number of epochs
+            const epochs = parseInt(prompt('Type nr of epochs; \nPreviously used value: ' + localStorage.getItem("epochs")));
+            if (epochs != null) {
+                localStorage.setItem("epochs", epochs);
+            }            
+            // input learning rate value
+            const learningRate = parseFloat(prompt('Type learning rate; \nPreviously used value: ' + localStorage.getItem("learningRate")));
+            if (learningRate != null) {
+                localStorage.setItem("learningRate", learningRate);
+            }
+            // input training momentum curve
             let momentum = JSON.parse(prompt('Type training momentum; \nPreviously used value: ' + localStorage.getItem("momentum")));
-            localStorage.setItem("momentum", JSON.stringify(momentum)); 
-            momentum.unshift(momentum[0]);
+            if (momentum != null) {
+                localStorage.setItem("momentum", JSON.stringify(momentum));
+                momentum.unshift(momentum[0]); 
+            }
             await trainModel(model, inputTensor, imageData, lossThreshold, epochs, learningRate, momentum);
 
             // Predict and render output

@@ -107,6 +107,9 @@
             const padding = [1, 1, 1, 1]; // Change values as needed for desired padding 
             const paddedTensor = applyCustomPadding(inputTensor, padding);
 
+            console.log(paddedTensor.shape);
+            console.log(outputTensor.shape);
+
             let previousLoss = Infinity;
             let epoch = 0;
             let momentumStep = 0; 

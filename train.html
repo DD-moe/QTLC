@@ -51,7 +51,8 @@
                 inputShape: [100, 100, 2],
                 kernelSize: 1,
                 filters: 16,
-                activation: 'relu'
+                activation: 'relu',
+                padding: 'same'
             }));
             model.add(tf.layers.conv2d({
                 kernelSize: 3,

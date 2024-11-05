@@ -34,7 +34,7 @@
       // Resize to 15x15 with bilinear interpolation
       model.add(tf.layers.resizing({ size: [15, 15] }));
 
-      model.add(tf.layers.reshape({ targetShape: [1, 15, 15, 1] }));
+      model.add(tf.layers.reshape({ targetShape: [15, 15, 1] }));
 
       // Convolution layer with 2x2 kernel and 1 output channel
       model.add(tf.layers.conv2d({

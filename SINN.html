@@ -29,10 +29,12 @@
 
       // First layer: Dense layer (5x5) without biases
       model.add(tf.layers.dense({ units: 25, useBias: false, inputShape: [1] }));
-      model.add(tf.layers.reshape({ targetShape: [1, 5, 5, 1] }));
+      model.add(tf.layers.reshape({ targetShape: [5, 5, 1] }));
 
       // Resize to 15x15 with bilinear interpolation
       model.add(tf.layers.resizing({ size: [15, 15] }));
+
+      model.add(tf.layers.reshape({ targetShape: [1, 15, 15, 1] }));
 
       // Convolution layer with 2x2 kernel and 1 output channel
       model.add(tf.layers.conv2d({

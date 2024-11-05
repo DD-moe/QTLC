@@ -56,6 +56,7 @@ function createModel() {
         kernelInitializer: 'randomNormal'
     });
     const reshape = tf.layers.reshape({ targetShape: [5, 5, 1] });
+    const resize1 = tf.layers.resizing({ height: 15, width: 15, interpolation: 'bilinear' });
     const convLayer = tf.layers.conv2d({
         filters: 1,
         kernelSize: [2, 2],
@@ -63,12 +64,17 @@ function createModel() {
         activation: 'linear',
         kernelInitializer: 'randomNormal'
     });
+    const resize2 = tf.layers.resizing({
+        height: imageTensor.shape[0],
+        width: imageTensor.shape[1],
+        interpolation: 'bilinear'
+    });
 
     let output = denseLayer.apply(input);
     output = reshape.apply(output);
-    output = tf.image.resizeBilinear(output, [15, 15]); // Bilinear upscaling by 3
+    output = resize1.apply(output); // Upscale by factor of 3
     output = convLayer.apply(output);
-    output = tf.image.resizeBilinear(output, [imageTensor.shape[0], imageTensor.shape[1]]);
+    output = resize2.apply(output); // Final upscaling to original image size
     return tf.model({ inputs: input, outputs: output });
 }
 

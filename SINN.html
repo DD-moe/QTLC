@@ -63,6 +63,7 @@ function createModel() {
         activation: 'linear',
         kernelInitializer: 'randomNormal'
     });
+
     let output = denseLayer.apply(input);
     output = reshape.apply(output);
     output = tf.image.resizeBilinear(output, [15, 15]); // Bilinear upscaling by 3
@@ -87,7 +88,7 @@ trainButton.addEventListener('click', async () => {
 
     // Reshape the image tensor for training
     const xs = tf.ones([1, 1]); // Input is a single value, as per the structure
-    const ys = imageTensor.expandDims(-1); // Output should match image dimensions
+    const ys = imageTensor.expandDims(-1).expandDims(0); // Output should match image dimensions
 
     // Train the model
     await model.fit(xs, ys, {

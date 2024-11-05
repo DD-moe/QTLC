@@ -48,6 +48,8 @@
       // Final resize back to original image size
       model.add(tf.layers.resizing({ size: [originalHeight, originalWidth] }));
 
+      model.add(tf.layers.reshape({ targetShape: [originalHeight, originalWidth, 1] }));
+
       // Compile model
       model.compile({
         optimizer: tf.train.adam(),

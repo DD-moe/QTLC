@@ -1,121 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Single-Image Neural Network</title>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <meta charset="UTF-8">
+  <title>TensorFlow.js Image Processing</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
 </head>
 <body>
-<h1>Image Neural Network Training</h1>
-<input type="file" id="fileInput" accept="image/*"><br><br>
-<canvas id="inputCanvas" style="display:none;"></canvas>
-<canvas id="outputCanvas"></canvas><br><br>
-<button id="trainButton">Train & Predict</button>
+  <h1>TF.js Image Processor</h1>
+  <input type="file" id="imageInput" accept="image/*">
+  <p id="status">Load an image to begin...</p>
+  
+  <script>
+    document.getElementById('imageInput').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
 
-<script>
-const inputCanvas = document.getElementById('inputCanvas');
-const outputCanvas = document.getElementById('outputCanvas');
-const fileInput = document.getElementById('fileInput');
-const trainButton = document.getElementById('trainButton');
+      // Load the image and convert to grayscale tensor
+      const imageBitmap = await createImageBitmap(file);
+      const imageTensor = tf.browser.fromPixels(imageBitmap, 1); // Only one channel (grayscale)
+      const [originalHeight, originalWidth] = imageTensor.shape.slice(0, 2);
 
-let model;
-let imageTensor;
+      // Preprocess input and output tensors
+      const inputTensor = tf.tensor([1], [1]);  // Input with shape [1]
+      const outputTensor = imageTensor.reshape([1, originalHeight, originalWidth, 1]); // [1, H, W, 1]
 
-// Load and preprocess the image
-fileInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
-    img.onload = () => {
-        const ctx = inputCanvas.getContext('2d');
-        inputCanvas.width = img.width;
-        inputCanvas.height = img.height;
-        outputCanvas.width = img.width;
-        outputCanvas.height = img.height;
-        ctx.drawImage(img, 0, 0, img.width, img.height);
+      // Define the model
+      const model = tf.sequential();
 
-        // Convert the image to grayscale
-        const imageData = ctx.getImageData(0, 0, img.width, img.height);
-        const grayscaleData = new Float32Array(img.width * img.height);
-        for (let i = 0; i < grayscaleData.length; i++) {
-            const r = imageData.data[i * 4];
-            grayscaleData[i] = r / 255; // Assuming grayscale image, take red channel
-        }
-        imageTensor = tf.tensor2d(grayscaleData, [img.height, img.width]);
-    };
-});
+      // First layer: Dense layer (5x5) without biases
+      model.add(tf.layers.dense({ units: 25, useBias: false, inputShape: [1] }));
+      model.add(tf.layers.reshape({ targetShape: [5, 5, 1] }));
 
-// Define the model
-function createModel() {
-    const input = tf.input({ shape: [1], name: 'input' });
-    const denseLayer = tf.layers.dense({
-        units: 5 * 5,
-        useBias: false,
-        kernelInitializer: 'randomNormal'
-    });
-    const reshape = tf.layers.reshape({ targetShape: [5, 5, 1, 1] });
-    const resize1 = tf.layers.resizing({ height: 15, width: 15, interpolation: 'bilinear' });
-    const convLayer = tf.layers.conv2d({
+      // Resize to 15x15 with bilinear interpolation
+      model.add(tf.layers.resizeBilinear({ size: [15, 15] }));
+
+      // Convolution layer with 2x2 kernel and 1 output channel
+      model.add(tf.layers.conv2d({
         filters: 1,
-        kernelSize: [2, 2],
-        padding: 'valid',
-        activation: 'linear',
-        kernelInitializer: 'randomNormal'
-    });
-    const resize2 = tf.layers.resizing({
-        height: imageTensor.shape[0],
-        width: imageTensor.shape[1],
-        interpolation: 'bilinear'
-    });
+        kernelSize: 2,
+        strides: 1,
+        padding: 'same',
+        activation: 'relu',
+      }));
 
-    let output = denseLayer.apply(input);
-    output = reshape.apply(output);
-    output = resize1.apply(output); // Upscale by factor of 3
-    output = convLayer.apply(output);
-    output = resize2.apply(output); // Final upscaling to original image size
-    return tf.model({ inputs: input, outputs: output });
-}
+      // Final resize back to original image size
+      model.add(tf.layers.resizeBilinear({ size: [originalHeight, originalWidth] }));
 
-// Train and predict
-trainButton.addEventListener('click', async () => {
-    if (!imageTensor) {
-        alert("Please load an image first!");
-        return;
-    }
-
-    // Create the model and compile it
-    model = createModel();
-    model.compile({
+      // Compile model
+      model.compile({
         optimizer: tf.train.adam(),
         loss: 'meanSquaredError'
+      });
+
+      // Train the model for 20 epochs
+      document.getElementById('status').innerText = 'Training...';
+      await model.fit(inputTensor, outputTensor, { epochs: 20 });
+      document.getElementById('status').innerText = 'Training complete!';
+
+      // Predict and display the result
+      const prediction = model.predict(inputTensor);
+      const result = prediction.reshape([originalHeight, originalWidth, 1]);
+      const imageData = await tf.browser.toPixels(result);
+
+      // Display the processed image
+      const canvas = document.createElement('canvas');
+      canvas.width = originalWidth;
+      canvas.height = originalHeight;
+      const ctx = canvas.getContext('2d');
+      const imageDataObj = new ImageData(new Uint8ClampedArray(imageData), originalWidth, originalHeight);
+      ctx.putImageData(imageDataObj, 0, 0);
+      document.body.appendChild(canvas);
+
+      // Clean up tensors
+      inputTensor.dispose();
+      outputTensor.dispose();
+      imageTensor.dispose();
+      prediction.dispose();
+      result.dispose();
     });
-
-    // Reshape the image tensor for training
-    const xs = tf.ones([1, 1]); // Input is a single value, as per the structure
-    const ys = imageTensor.expandDims(-1).expandDims(0); // Output should match image dimensions
-
-    // Train the model
-    await model.fit(xs, ys, {
-        epochs: 10,
-        batchSize: 1,
-    });
-
-    // Predict the output and display it
-    const prediction = model.predict(xs).squeeze();
-    const predictedData = prediction.dataSync();
-    const ctx = outputCanvas.getContext('2d');
-    const outputImageData = ctx.createImageData(outputCanvas.width, outputCanvas.height);
-    for (let i = 0; i < predictedData.length; i++) {
-        const value = predictedData[i] * 255;
-        outputImageData.data[i * 4] = value;
-        outputImageData.data[i * 4 + 1] = value;
-        outputImageData.data[i * 4 + 2] = value;
-        outputImageData.data[i * 4 + 3] = 255;
-    }
-    ctx.putImageData(outputImageData, 0, 0);
-});
-</script>
+  </script>
 </body>
 </html>

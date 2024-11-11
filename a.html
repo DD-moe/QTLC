@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Pixel Processing with Threshold</title>
+  <style>
+    #canvas {
+      border: 1px solid black;
+      display: block;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Image Pixel Processing with Threshold</h2>
+
+  <label for="image1">Upload First Image:</label>
+  <input type="file" id="image1" accept="image/*"><br><br>
+
+  <label for="image2">Upload Second Image:</label>
+  <input type="file" id="image2" accept="image/*"><br><br>
+
+  <label for="threshold">Transparency Threshold (0-255):</label>
+  <input type="number" id="threshold" value="50" min="0" max="255"><br><br>
+
+  <button onclick="processImages()">Process Images</button>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    function processImages() {
+      const file1 = document.getElementById('image1').files[0];
+      const file2 = document.getElementById('image2').files[0];
+      const threshold = parseInt(document.getElementById('threshold').value);
+
+      if (file1 && file2) {
+        const img1 = new Image();
+        const img2 = new Image();
+        
+        img1.src = URL.createObjectURL(file1);
+        img2.src = URL.createObjectURL(file2);
+        
+        img1.onload = () => {
+          img2.onload = () => {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size to the size of the first image
+            canvas.width = img1.width;
+            canvas.height = img1.height;
+
+            // Draw the first image
+            ctx.drawImage(img1, 0, 0);
+            const imgData1 = ctx.getImageData(0, 0, img1.width, img1.height);
+
+            // Draw the second image
+            ctx.drawImage(img2, 0, 0);
+            const imgData2 = ctx.getImageData(0, 0, img2.width, img2.height);
+
+            const resultData = ctx.createImageData(img1.width, img1.height);
+
+            for (let i = 0; i < imgData1.data.length; i += 4) {
+              const r1 = imgData1.data[i];
+              const g1 = imgData1.data[i + 1];
+              const b1 = imgData1.data[i + 2];
+
+              const r2 = imgData2.data[i];
+              const g2 = imgData2.data[i + 1];
+              const b2 = imgData2.data[i + 2];
+
+              // Calculate the color difference between the two images
+              const diff = Math.sqrt(
+                Math.pow(r1 - r2, 2) +
+                Math.pow(g1 - g2, 2) +
+                Math.pow(b1 - b2, 2)
+              );
+
+              // Make pixel transparent if the difference is greater than the threshold
+              if (diff > threshold) {
+                resultData.data[i + 3] = 0; // Set alpha to 0 for transparency
+              } else {
+                // Copy the pixel data from the first image to the result
+                resultData.data[i] = r1;
+                resultData.data[i + 1] = g1;
+                resultData.data[i + 2] = b1;
+                resultData.data[i + 3] = 255; // Set alpha to opaque
+              }
+            }
+
+            // Draw the result on the canvas
+            ctx.putImageData(resultData, 0, 0);
+          };
+        };
+      } else {
+        alert("Please upload both images.");
+      }
+    }
+  </script>
+</body>
+</html>

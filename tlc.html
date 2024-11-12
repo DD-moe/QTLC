@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TLC Plate Analysis</title>
+  <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    #image-container {
+      position: relative;
+      max-width: 90vw;
+      max-height: 70vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #image-display {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain; /* Ensures entire image fits within the container */
+    }
+    #selected-box {
+      position: absolute;
+      border: 2px dashed red;
+      background-color: rgba(255, 0, 0, 0.2);
+      cursor: move;
+      width: 100px;
+      height: 100px;
+      top: 0;
+      left: 0;
+      touch-action: none;
+
+      /* This makes things *much* easier */
+      box-sizing: border-box;
+    }
+    #chart-container {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 90vw;
+    }
+  </style>
+</head>
+<body>
+  <h2>Upload Image and Analyze TLC Track</h2>
+  <input type="file" accept="image/*" id="image-input">
+  <div id="image-container">
+    <img id="image-display" alt="Uploaded Image">
+    <div id="selected-box" class="resizable"></div>
+  </div>
+  <button id="process-button">Process</button>
+  <canvas id="chart" height="150"></canvas>
+
+  <script>
+    const imageInput = document.getElementById('image-input');
+    const imageDisplay = document.getElementById('image-display');
+    const selectedBox = document.getElementById('selected-box');
+    const processButton = document.getElementById('process-button');
+    const chartCanvas = document.getElementById('chart');
+    const chartCtx = chartCanvas.getContext('2d');
+
+    // Load and display image
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          imageDisplay.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Make the selected box resizable and draggable
+interact('.resizable')
+  .resizable({
+    edges: { top: true, left: true, bottom: true, right: true },
+    listeners: {
+      move: function (event) {
+        let { x, y } = event.target.dataset
+
+        x = (parseFloat(x) || 0) + event.deltaRect.left
+        y = (parseFloat(y) || 0) + event.deltaRect.top
+
+        Object.assign(event.target.style, {
+          width: `${event.rect.width}px`,
+          height: `${event.rect.height}px`,
+          transform: `translate(${x}px, ${y}px)`
+        })
+
+        Object.assign(event.target.dataset, { x, y })
+      }
+    }
+  })
+
+    // Process the selected area and display the intensity chart
+    processButton.addEventListener('click', () => {
+      const img = imageDisplay;
+      const box = selectedBox.getBoundingClientRect();
+      const imgRect = img.getBoundingClientRect();
+
+      const scaleX = img.naturalWidth / imgRect.width;
+      const scaleY = img.naturalHeight / imgRect.height;
+
+      const startX = (box.left - imgRect.left) * scaleX;
+      const startY = (box.top - imgRect.top) * scaleY;
+      const width = Math.floor(box.width * scaleX);
+      const height = Math.floor(box.height * scaleY);
+
+      // Create an off-screen canvas to extract pixel data
+      const offScreenCanvas = document.createElement('canvas');
+      offScreenCanvas.width = width;
+      offScreenCanvas.height = height;
+      const offScreenCtx = offScreenCanvas.getContext('2d');
+      offScreenCtx.drawImage(img, startX, startY, width, height, 0, 0, width, height);
+
+      const imageData = offScreenCtx.getImageData(0, 0, width, height);
+      const columnSums = new Array(width).fill(0);
+
+      // Calculate the sum of pixel intensities in each column
+      for (let x = 0; x < width; x++) {
+        let sum = 0;
+        for (let y = 0; y < height; y++) {
+          const index = (y * width + x) * 4;
+          const pixelValue = 0.299 * imageData.data[index] + 
+                             0.587 * imageData.data[index + 1] + 
+                             0.114 * imageData.data[index + 2];
+          sum += pixelValue;
+        }
+        columnSums[x] = sum;
+      }
+
+      // Set the canvas width and clear any previous chart
+      chartCanvas.width = width;
+      chartCtx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+      chartCtx.beginPath();
+
+      // Draw the chart
+      const maxSum = Math.max(...columnSums);
+      chartCtx.moveTo(0, chartCanvas.height - (columnSums[0] / maxSum) * chartCanvas.height);
+      for (let x = 1; x < columnSums.length; x++) {
+        chartCtx.lineTo(x, chartCanvas.height - (columnSums[x] / maxSum) * chartCanvas.height);
+      }
+      chartCtx.strokeStyle = 'blue';
+      chartCtx.stroke();
+    });
+  </script>
+</body>
+</html>

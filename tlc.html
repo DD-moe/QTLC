@@ -41,10 +41,20 @@
       /* This makes things *much* easier */
       box-sizing: border-box;
     }
-    #chart-container {
+    #results {
       margin-top: 20px;
       width: 100%;
       max-width: 90vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #selected-output, #chart {
+      width: 100%;
+      max-width: 90vw;
+      height: 200px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
     }
   </style>
 </head>
@@ -56,14 +66,20 @@
     <div id="selected-box" class="resizable"></div>
   </div>
   <button id="process-button">Process</button>
-  <canvas id="chart" height="150"></canvas>
+
+  <div id="results">
+    <canvas id="selected-output"></canvas>
+    <canvas id="chart"></canvas>
+  </div>
 
   <script>
     const imageInput = document.getElementById('image-input');
     const imageDisplay = document.getElementById('image-display');
     const selectedBox = document.getElementById('selected-box');
     const processButton = document.getElementById('process-button');
+    const selectedOutputCanvas = document.getElementById('selected-output');
     const chartCanvas = document.getElementById('chart');
+    const selectedOutputCtx = selectedOutputCanvas.getContext('2d');
     const chartCtx = chartCanvas.getContext('2d');
 
     // Load and display image
@@ -79,26 +95,26 @@
     });
 
     // Make the selected box resizable and draggable
-interact('.resizable')
-  .resizable({
-    edges: { top: true, left: true, bottom: true, right: true },
-    listeners: {
-      move: function (event) {
-        let { x, y } = event.target.dataset
+    interact('.resizable')
+      .resizable({
+        edges: { top: true, left: true, bottom: true, right: true },
+        listeners: {
+          move: function (event) {
+            let { x, y } = event.target.dataset
 
-        x = (parseFloat(x) || 0) + event.deltaRect.left
-        y = (parseFloat(y) || 0) + event.deltaRect.top
+            x = (parseFloat(x) || 0) + event.deltaRect.left
+            y = (parseFloat(y) || 0) + event.deltaRect.top
 
-        Object.assign(event.target.style, {
-          width: `${event.rect.width}px`,
-          height: `${event.rect.height}px`,
-          transform: `translate(${x}px, ${y}px)`
-        })
+            Object.assign(event.target.style, {
+              width: `${event.rect.width}px`,
+              height: `${event.rect.height}px`,
+              transform: `translate(${x}px, ${y}px)`
+            })
 
-        Object.assign(event.target.dataset, { x, y })
-      }
-    }
-  })
+            Object.assign(event.target.dataset, { x, y })
+          }
+        }
+      });
 
     // Process the selected area and display the intensity chart
     processButton.addEventListener('click', () => {
@@ -137,16 +153,30 @@ interact('.resizable')
         columnSums[x] = sum;
       }
 
-      // Set the canvas width and clear any previous chart
+      // Normalize the column sums to range from 0 to 255
+      const minSum = Math.min(...columnSums);
+      const maxSum = Math.max(...columnSums);
+      const range = maxSum - minSum;
+
+      const normalizedSums = columnSums.map(value => {
+        return range === 0 ? 0 : ((value - minSum) / range) * maxSum;
+      });
+
+      // Set both canvases width and draw selected output image
+      selectedOutputCanvas.width = width;
+      selectedOutputCanvas.height = height;
+      selectedOutputCtx.clearRect(0, 0, selectedOutputCanvas.width, selectedOutputCanvas.height);
+      selectedOutputCtx.drawImage(offScreenCanvas, 0, 0, width, height);
+
+      // Set chart canvas width and draw chart
       chartCanvas.width = width;
       chartCtx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
       chartCtx.beginPath();
 
       // Draw the chart
-      const maxSum = Math.max(...columnSums);
-      chartCtx.moveTo(0, chartCanvas.height - (columnSums[0] / maxSum) * chartCanvas.height);
-      for (let x = 1; x < columnSums.length; x++) {
-        chartCtx.lineTo(x, chartCanvas.height - (columnSums[x] / maxSum) * chartCanvas.height);
+      chartCtx.moveTo(0, chartCanvas.height - (normalizedSums[0] / maxSum) * chartCanvas.height);
+      for (let x = 1; x < normalizedSums.length; x++) {
+        chartCtx.lineTo(x, chartCanvas.height - (normalizedSums[x] / maxSum) * chartCanvas.height);
       }
       chartCtx.strokeStyle = 'blue';
       chartCtx.stroke();

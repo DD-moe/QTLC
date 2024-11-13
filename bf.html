@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Processing</title>
+  <style>
+    #canvas {
+      border: 1px solid black;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Image Processing</h2>
+
+<!-- Input elements -->
+<label for="fileInput1">Load Image 1 and Image 2 (Base Images for Mask):</label>
+<input type="file" id="fileInput1" accept="image/*" multiple>
+<br><br>
+
+<label for="overlayInput">Load Overlay Image (Optional):</label>
+<input type="file" id="overlayInput" accept="image/*">
+<br><br>
+
+<label for="thresholdInput">Transparency Threshold:</label>
+<input type="number" id="thresholdInput" value="20" min="0" max="255">
+<br><br>
+
+<button onclick="processImages()">Process Images</button>
+<br><br>
+
+<!-- Canvas to display the final result -->
+<canvas id="canvas"></canvas>
+
+<!-- Hidden canvas for processing -->
+<canvas id="hiddenCanvas" class="hidden"></canvas>
+
+<script>
+  const fileInput1 = document.getElementById('fileInput1');
+  const overlayInput = document.getElementById('overlayInput');
+  const thresholdInput = document.getElementById('thresholdInput');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const hiddenCanvas = document.getElementById('hiddenCanvas');
+  const hiddenCtx = hiddenCanvas.getContext('2d');
+  
+  let images = [];
+  let overlayImage = null;
+
+  // Load selected images for masking
+  fileInput1.addEventListener('change', async (event) => {
+    images = [];
+    const files = event.target.files;
+    
+    if (files.length !== 2) {
+      alert("Please select exactly 2 images for masking.");
+      return;
+    }
+
+    for (let i = 0; i < files.length; i++) {
+      const img = new Image();
+      img.src = URL.createObjectURL(files[i]);
+      await img.decode();
+      images.push(img);
+    }
+    
+    setCanvasDimensions(images[0]);
+  });
+
+  // Load optional overlay image
+  overlayInput.addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      overlayImage = new Image();
+      overlayImage.src = URL.createObjectURL(file);
+      await overlayImage.decode();
+    } else {
+      overlayImage = null;
+    }
+  });
+
+  // Set canvas and hidden canvas dimensions based on the first image
+  function setCanvasDimensions(img) {
+    const { width, height } = img;
+    canvas.width = hiddenCanvas.width = width;
+    canvas.height = hiddenCanvas.height = height;
+  }
+
+  function processImages() {
+    if (images.length !== 2) {
+      alert("Please load exactly two images for masking.");
+      return;
+    }
+
+    const threshold = parseInt(thresholdInput.value, 10);
+
+    // Draw the two base images for mask creation
+    hiddenCtx.clearRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
+    hiddenCtx.drawImage(images[0], 0, 0);
+    const imgData1 = hiddenCtx.getImageData(0, 0, canvas.width, canvas.height);
+
+    hiddenCtx.clearRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
+    hiddenCtx.drawImage(images[1], 0, 0);
+    const imgData2 = hiddenCtx.getImageData(0, 0, canvas.width, canvas.height);
+
+    const resultData = ctx.createImageData(canvas.width, canvas.height);
+
+    // Create mask by comparing the two images
+    for (let i = 0; i < imgData1.data.length; i += 4) {
+      const r1 = imgData1.data[i], g1 = imgData1.data[i + 1], b1 = imgData1.data[i + 2];
+      const r2 = imgData2.data[i], g2 = imgData2.data[i + 1], b2 = imgData2.data[i + 2];
+      const diff = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+
+      if (diff > threshold) {
+        resultData.data[i + 3] = 0; // Transparent
+      } else {
+        resultData.data[i + 3] = 255; // Opaque
+      }
+    }
+
+    // If overlay image is present, apply it to the masked regions
+    if (overlayImage) {
+      hiddenCtx.clearRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
+      hiddenCtx.drawImage(overlayImage, 0, 0);
+      const overlayData = hiddenCtx.getImageData(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < resultData.data.length; i += 4) {
+        if (resultData.data[i + 3] > 0) { // Only apply overlay where mask is opaque
+          resultData.data[i] = overlayData.data[i];
+          resultData.data[i + 1] = overlayData.data[i + 1];
+          resultData.data[i + 2] = overlayData.data[i + 2];
+        }
+      }
+    }
+
+    // Draw the final result onto the main canvas
+    ctx.putImageData(resultData, 0, 0);
+  }
+</script>
+
+</body>
+</html>

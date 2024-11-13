@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TLC Plate Analysis - Dual Image Comparison</title>
+  <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    #image-container {
+      position: relative;
+      max-width: 90vw;
+      max-height: 70vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #image-display {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    #selected-box {
+      position: absolute;
+      border: 2px dashed red;
+      background-color: rgba(255, 0, 0, 0.2);
+      cursor: move;
+      width: 100px;
+      height: 100px;
+      top: 0;
+      left: 0;
+      touch-action: none;
+      box-sizing: border-box;
+    }
+    #results {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 90vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #selected-output, #chart {
+      width: 100%;
+      max-width: 90vw;
+      height: 200px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Upload Data and Background Images for Analysis</h2>
+  <input type="file" accept="image/*" id="data-image-input"> Data Image<br>
+  <input type="file" accept="image/*" id="background-image-input"> Background Image
+  <div id="image-container">
+    <img id="image-display" alt="Uploaded Image">
+    <div id="selected-box" class="resizable"></div>
+  </div>
+  <button id="process-button">Process</button>
+
+  <div id="results">
+    <canvas id="selected-output"></canvas>
+    <canvas id="chart"></canvas>
+  </div>
+
+  <script>
+    const dataImageInput = document.getElementById('data-image-input');
+    const backgroundImageInput = document.getElementById('background-image-input');
+    const imageDisplay = document.getElementById('image-display');
+    const selectedBox = document.getElementById('selected-box');
+    const processButton = document.getElementById('process-button');
+    const selectedOutputCanvas = document.getElementById('selected-output');
+    const chartCanvas = document.getElementById('chart');
+    const selectedOutputCtx = selectedOutputCanvas.getContext('2d');
+    const chartCtx = chartCanvas.getContext('2d');
+
+    let dataImage = new Image();
+    let backgroundImage = new Image();
+
+    // Load and display images when both files are selected
+    function loadImage(input, img) {
+      return new Promise((resolve) => {
+        const file = input.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            img.src = event.target.result;
+            img.onload = () => resolve(img);
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    async function loadImages() {
+      if (dataImageInput.files[0] && backgroundImageInput.files[0]) {
+        await loadImage(dataImageInput, dataImage);
+        await loadImage(backgroundImageInput, backgroundImage);
+        
+        if (dataImage.width === backgroundImage.width && dataImage.height === backgroundImage.height) {
+          imageDisplay.src = dataImage.src;
+        } else {
+          alert("Both images must be the same size.");
+        }
+      }
+    }
+
+    dataImageInput.addEventListener('change', loadImages);
+    backgroundImageInput.addEventListener('change', loadImages);
+
+    // Make the selected box resizable and draggable
+    interact('.resizable').resizable({
+      edges: { top: true, left: true, bottom: true, right: true },
+      listeners: {
+        move: function (event) {
+          let { x, y } = event.target.dataset;
+          x = (parseFloat(x) || 0) + event.deltaRect.left;
+          y = (parseFloat(y) || 0) + event.deltaRect.top;
+          Object.assign(event.target.style, {
+            width: `${event.rect.width}px`,
+            height: `${event.rect.height}px`,
+            transform: `translate(${x}px, ${y}px)`
+          });
+          Object.assign(event.target.dataset, { x, y });
+        }
+      }
+    });
+
+    // Process images
+    processButton.addEventListener('click', () => {
+      if (dataImage.width !== backgroundImage.width || dataImage.height !== backgroundImage.height) {
+        alert("Both images must be the same size.");
+        return;
+      }
+
+      const box = selectedBox.getBoundingClientRect();
+      const imgRect = imageDisplay.getBoundingClientRect();
+      const scaleX = dataImage.naturalWidth / imgRect.width;
+      const scaleY = dataImage.naturalHeight / imgRect.height;
+      const startX = (box.left - imgRect.left) * scaleX;
+      const startY = (box.top - imgRect.top) * scaleY;
+      const width = Math.floor(box.width * scaleX);
+      const height = Math.floor(box.height * scaleY);
+
+      // Canvas for data and background images
+      const dataCanvas = document.createElement('canvas');
+      const backgroundCanvas = document.createElement('canvas');
+      dataCanvas.width = width;
+      dataCanvas.height = height;
+      backgroundCanvas.width = width;
+      backgroundCanvas.height = height;
+
+      // Draw and blur background image
+      const dataCtx = dataCanvas.getContext('2d');
+      const backgroundCtx = backgroundCanvas.getContext('2d');
+      dataCtx.drawImage(dataImage, startX, startY, width, height, 0, 0, width, height);
+      backgroundCtx.drawImage(backgroundImage, startX, startY, width, height, 0, 0, width, height);
+
+      // Apply blur to background (simple averaging blur)
+      const backgroundData = backgroundCtx.getImageData(0, 0, width, height);
+      const blurredBackground = backgroundCtx.getImageData(0, 0, width, height);
+      for (let i = 0; i < backgroundData.data.length; i += 4) {
+        const avg = (backgroundData.data[i] + backgroundData.data[i + 1] + backgroundData.data[i + 2]) / 3;
+        blurredBackground.data[i] = avg;
+        blurredBackground.data[i + 1] = avg;
+        blurredBackground.data[i + 2] = avg;
+        blurredBackground.data[i + 3] = 255;
+      }
+      backgroundCtx.putImageData(blurredBackground, 0, 0);
+
+      // Perform division and normalize
+      const dataImageData = dataCtx.getImageData(0, 0, width, height);
+      for (let i = 0; i < dataImageData.data.length; i += 4) {
+        const dataValue = dataImageData.data[i];
+        const backgroundValue = blurredBackground.data[i];
+        const resultValue = backgroundValue !== 0 ? Math.min((dataValue / backgroundValue) * 255, 255) : 255;
+        dataImageData.data[i] = resultValue;
+        dataImageData.data[i + 1] = resultValue;
+        dataImageData.data[i + 2] = resultValue;
+      }
+
+      // Draw and calculate mean intensity
+      selectedOutputCanvas.width = width;
+      selectedOutputCanvas.height = height;
+      selectedOutputCtx.putImageData(dataImageData, 0, 0);
+
+      const totalIntensity = Array.from(dataImageData.data).reduce((sum, value, i) => i % 4 === 0 ? sum + value : sum, 0);
+      const meanIntensity = totalIntensity / (width * height);
+
+      alert(`Mean Intensity: ${meanIntensity.toFixed(2)}`);
+    });
+  </script>
+</body>
+</html>

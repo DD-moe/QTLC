@@ -40,6 +40,8 @@
 <canvas id="hiddenCanvas" class="hidden"></canvas>
 
 <script>
+  const resultData = undefined;
+
   const fileInput1 = document.getElementById('fileInput1');
   const overlayInput = document.getElementById('overlayInput');
   const thresholdInput = document.getElementById('thresholdInput');
@@ -47,6 +49,7 @@
   const ctx = canvas.getContext('2d');
   const hiddenCanvas = document.getElementById('hiddenCanvas');
   const hiddenCtx = hiddenCanvas.getContext('2d');
+  document.getElementById("deleteNoiseButton").addEventListener("click", deleteNoiseSpots);
   
   let images = [];
   let overlayImage = null;
@@ -107,7 +110,7 @@
     hiddenCtx.drawImage(images[1], 0, 0);
     const imgData2 = hiddenCtx.getImageData(0, 0, canvas.width, canvas.height);
 
-    const resultData = ctx.createImageData(canvas.width, canvas.height);
+    resultData = ctx.createImageData(canvas.width, canvas.height);
 
     // Create mask by comparing the two images
     for (let i = 0; i < imgData1.data.length; i += 4) {
@@ -140,6 +143,53 @@
     // Draw the final result onto the main canvas
     ctx.putImageData(resultData, 0, 0);
   }
+
+// Function to delete noise spots
+function deleteNoiseSpots() {
+    let result = resultData.data;
+
+    // Iterate over each pixel
+    for (let y = 1; y < canvas.height - 1; y++) {
+        for (let x = 1; x < canvas.width - 1; x++) {
+            let index = (y * canvas.width + x) * 4;
+
+            // Check if the pixel is transparent
+            if (data[index + 3] === 0) {
+                let transparentCount = 0;
+
+                // Check 3x3 kernel around the pixel
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        let neighborIndex = ((y + ky) * canvas.width + (x + kx)) * 4;
+                        if (data[neighborIndex + 3] === 0) {
+                            transparentCount++;
+                        }
+                    }
+                }
+
+                // If more than 1 surrounding pixel is transparent, keep it transparent
+                if (transparentCount > 1) {
+                    result[index + 3] = 0;
+                } else {
+                    // Otherwise, set it to opaque
+                    result[index] = data[index];
+                    result[index + 1] = data[index + 1];
+                    result[index + 2] = data[index + 2];
+                    result[index + 3] = 255;
+                }
+            } else {
+                // Copy opaque pixels directly
+                result[index] = data[index];
+                result[index + 1] = data[index + 1];
+                result[index + 2] = data[index + 2];
+                result[index + 3] = data[index + 3];
+            }
+        }
+    }
+    // Draw the final result onto the main canvas
+    ctx.putImageData(resultData, 0, 0);    
+  }
+  
 </script>
 
 </body>

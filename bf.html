@@ -167,7 +167,7 @@ function deleteNoiseSpots() {
   } 
 
   if (fract === 4) {
-    const decision = prompt("Value 4 could break well-detected contours. Do you accept such possibility?");
+    const decision = confirm("Value 4 could break well-detected contours. Do you accept such possibility?");
     if (!decision) {
       return;
     }

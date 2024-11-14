@@ -158,8 +158,21 @@
 
 // Function to delete noise spots
 function deleteNoiseSpots() {
-    let result = resultData.data;
-    const fract = parseInt(document.getElementById("fract").value);
+  let result = resultData.data;
+  const fract = parseInt(document.getElementById("fract").value);
+
+  if (fract < 1 || fract > 4) {
+    alert("Incorrect value: should be [1, 2, 3, 4]");
+    return;
+  } 
+
+  if (fract === 4) {
+    const decision = prompt("Value 4 could break well-detected contours. Do you accept such possibility?");
+    if (!decision) {
+      return;
+    }
+  }
+
     // Iterate over each pixel
     for (let y = 1; y < canvas.height - 1; y++) {
         for (let x = 1; x < canvas.width - 1; x++) {

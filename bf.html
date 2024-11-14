@@ -144,11 +144,11 @@
       const overlayData = hiddenCtx.getImageData(0, 0, canvas.width, canvas.height);
 
       for (let i = 0; i < resultData.data.length; i += 4) {
-        if (resultData.data[i + 3] > 0) { // Only apply overlay where mask is opaque
+        //if (resultData.data[i + 3] > 0) { // Only apply overlay where mask is opaque
           resultData.data[i] = overlayData.data[i];
           resultData.data[i + 1] = overlayData.data[i + 1];
           resultData.data[i + 2] = overlayData.data[i + 2];
-        }
+        //}
       }
     }
 

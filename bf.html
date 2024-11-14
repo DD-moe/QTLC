@@ -13,13 +13,17 @@
     }
 
     #button {
-      font-size: 2vmin;
+      font-size: 3vmin;
+      background-color: cadetblue;
+      border: 0.2vmin royalblue;
     }
 
     #input {
-      font-size: 2vmin;
+      font-size: 3vmin;
+      background-color: cadetblue;
+      border: 0.2vmin royalblue;
     }
-    
+
   </style>
 </head>
 <body>
@@ -50,7 +54,7 @@
 <canvas id="hiddenCanvas" class="hidden"></canvas>
 
 <script>
-  const resultData = undefined;
+  let resultData = undefined;
 
   const fileInput1 = document.getElementById('fileInput1');
   const overlayInput = document.getElementById('overlayInput');

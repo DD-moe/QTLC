@@ -12,13 +12,13 @@
       display: none;
     }
 
-    #button {
+    button {
       font-size: 3vmin;
       background-color: cadetblue;
       border: 0.2vmin royalblue;
     }
 
-    #input {
+    input {
       font-size: 3vmin;
       background-color: cadetblue;
       border: 0.2vmin royalblue;
@@ -182,8 +182,8 @@ function deleteNoiseSpots() {
                 }
 
                 // If more than 1 surrounding pixel is transparent, keep it transparent
-                if (transparentCount <= 1) {
-                    result[index + 3] = 255;
+                if (transparentCount <= 2) {
+                    result[index + 3] = 128;
                 }
             }
         }

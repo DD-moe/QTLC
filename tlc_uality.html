@@ -2,7 +2,7 @@ Put your HTML text here<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.1, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
     <title>TLC analyser</title>
     <style>
 body {
@@ -158,6 +158,20 @@ label {
         const green_factor = document.getElementById('green');
         const blue_factor = document.getElementById('blue');
 
+function scaleBodyToFullWidth() {
+    // Get the window's width
+    const screenWidth = window.innerWidth;
+
+    // Set the body's width to the screen width
+    document.body.style.width = `${screenWidth}px`;
+
+    // Optionally, scale the body content proportionally
+    const scaleFactor = screenWidth / document.body.scrollWidth;
+    document.body.style.transform = `scale(${scaleFactor})`;
+    document.body.style.transformOrigin = 'top left';
+}
+
+
         // Event listener for file input change
         imageInput.addEventListener('change', handleImageUpload);
 
@@ -177,6 +191,7 @@ label {
                         // Draw the image on the canvas
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.drawImage(img, 0, 0, img.width, img.height);
+                        scaleBodyToFullWidth();
                     };
                     img.src = e.target.result;
                 };

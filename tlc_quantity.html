@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Processor</title>
+  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start; /* Changed to align at the top */
+      height: 100%;
+      background-color: #f0f0f0;
+      overflow: auto; /* Allow scrolling */
+    }
+    #container {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+      overflow: auto; /* Allow container to scroll if content overflows */
+    }
+    canvas {
+      width: 100%; /* Scale canvas width to fit the viewport */
+      height: auto; /* Maintain aspect ratio */
+      border: 1px solid #ddd;
+    }
+    .resizable {
+      position: absolute;
+      border: 2px solid red;
+      cursor: move;
+    }
+    #outputCanvas {
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      width: 100%;
+      max-width: 600px;
+    }
+    #processBtn {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #processBtn:hover {
+      background-color: #45a049;
+    }
+    input[type="file"] {
+      position: absolute;
+      top: 20px; /* Adjusted to ensure it's visible */
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <input type="file" id="imageInput" accept="image/*">
+    <br>
+    <br>
+    <br>
+    <canvas id="canvas"></canvas>
+    <div class="resizable" style="width: 100px; height: 100px; top: 50px; left: 50px;"></div>
+    <button id="processBtn">Process</button>
+    <input type="number" id="redFactor" value="0.2">
+    <input type="number" id="greenFactor" value="0.7">
+    <input type="number" id="blueFactor" value="0.1">
+    <canvas id="outputCanvas"></canvas>
+    <canvas id="chartCanvas"></canvas>
+  </div>
+
+  <script>
+    // Get elements
+    const imageInput = document.getElementById('imageInput');
+    const canvas = document.getElementById('canvas');
+    const outputCanvas = document.getElementById('outputCanvas');
+    const ctx = canvas.getContext('2d');
+    const outputCtx = outputCanvas.getContext('2d');
+    const resizableDiv = document.querySelector('.resizable');
+    const processBtn = document.getElementById('processBtn');
+
+    let originalImageWidth, originalImageHeight;
+
+    // Load image onto canvas
+    imageInput.addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          // Set the original image width and height
+          originalImageWidth = img.width;
+          originalImageHeight = img.height;
+
+          // Set canvas to the original image size (preserving quality)
+          canvas.width = img.width;
+          canvas.height = img.height;
+
+          // Scale canvas display size to fit the viewport (CSS handles this)
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    let position = { x: 0, y: 0 };
+    // Initialize resizable and draggable behavior
+    interact('.resizable')
+      .resizable({
+        edges: { top: true, left: true, bottom: true, right: true },
+        listeners: {
+          move: function (event) {
+            let { x, y } = event.target.dataset;
+            x = (parseFloat(x) || 0) + event.deltaRect.left;
+            y = (parseFloat(y) || 0) + event.deltaRect.top;
+
+            Object.assign(event.target.style, {
+              width: `${event.rect.width}px`,
+              height: `${event.rect.height}px`,
+              transform: `translate(${x}px, ${y}px)`
+            });
+
+            Object.assign(event.target.dataset, { x, y });
+          }
+        }
+      })
+      .draggable({
+        listeners: {
+          start(event) {
+            console.log(event.type, event.target);
+            const computedStyle = window.getComputedStyle(event.target);
+            position.x = parseFloat(computedStyle.left) || 0;
+            position.y = parseFloat(computedStyle.top) || 0;
+          },
+          move(event) {
+            position.x += event.dx;
+            position.y += event.dy;
+            event.target.style.left = `${position.x}px`;
+            event.target.style.top = `${position.y}px`;
+          }
+        }
+      });
+
+// Handle process button click
+processBtn.addEventListener('click', function () {
+    const resizableRect = resizableDiv.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    
+    // Calculate the part of the canvas that is inside the resizable div
+    const sx = (resizableRect.left - canvasRect.left) * (originalImageWidth / canvasRect.width);
+    const sy = (resizableRect.top - canvasRect.top) * (originalImageHeight / canvasRect.height);
+    const sWidth = resizableRect.width * (originalImageWidth / canvasRect.width);
+    const sHeight = resizableRect.height * (originalImageHeight / canvasRect.height);
+
+    // Get the image data from the selected part of the canvas
+    const imageData = ctx.getImageData(sx, sy, sWidth, sHeight);
+
+    // Get the grayscale factors from the input elements by their IDs
+    const redFactor = parseFloat(document.getElementById('redFactor').value);
+    const greenFactor = parseFloat(document.getElementById('greenFactor').value);
+    const blueFactor = parseFloat(document.getElementById('blueFactor').value);
+
+    // Process the image data to grayscale using the provided factors
+    const grayscaleImageData = processTrack(imageData.data, sHeight, sWidth, redFactor, greenFactor, blueFactor);
+
+    // Create a new ImageData object with the processed grayscale data
+    const processedImageData = new ImageData(grayscaleImageData, sWidth, sHeight);
+
+    // Draw the grayscale image data to the output canvas
+    outputCanvas.width = sWidth;
+    outputCanvas.height = sHeight;
+    outputCtx.putImageData(processedImageData, 0, 0);
+    processCanvasData('outputCanvas', 'chartCanvas', kernelSize = 5);
+});
+
+function processTrack(imagedata, height, width, redFactor, greenFactor, blueFactor) {
+    // Create a new array to store grayscale values
+    const grayscaleImageData = new Uint8ClampedArray(imagedata.length);
+    
+    // Iterate through the pixel data
+    for (let i = 0; i < imagedata.length; i += 4) {
+        const red = imagedata[i];     // Red channel
+        const green = imagedata[i+1]; // Green channel
+        const blue = imagedata[i+2];  // Blue channel
+
+        // Calculate grayscale value based on the provided factors
+        const grayscale = Math.round(
+            red * redFactor + 
+            green * greenFactor + 
+            blue * blueFactor
+        );
+
+        // Set the grayscale value to the red, green, and blue channels of the image
+        grayscaleImageData[i] = grayscale;       // Red channel
+        grayscaleImageData[i + 1] = grayscale;   // Green channel
+        grayscaleImageData[i + 2] = grayscale;   // Blue channel
+        grayscaleImageData[i + 3] = imagedata[i + 3]; // Alpha channel (unchanged)
+    }
+
+    // Return the modified image data
+    return grayscaleImageData;
+}
+
+function processCanvasData(inputCanvasId, chartCanvasId, kernelSize = 5) {
+    // Get the canvas and its context
+    const inputCanvas = document.getElementById(inputCanvasId);
+    const inputCtx = inputCanvas.getContext('2d');
+    
+    // Get the chart canvas and its context
+    const chartCanvas = document.getElementById(chartCanvasId);
+    const chartCtx = chartCanvas.getContext('2d');
+    
+    // Set chart canvas width to match input canvas width
+    chartCanvas.width = inputCanvas.width;
+
+    // Get the image data from the input canvas
+    const imageData = inputCtx.getImageData(0, 0, inputCanvas.width, inputCanvas.height);
+    const data = imageData.data;
+
+    // Initialize an array to store the summation of the red channel per column
+    const redChannelSum = [];
+    
+    // Summing up the red channel for each column
+    for (let x = 0; x < inputCanvas.width; x++) {
+        let sum = 0;
+        for (let y = 0; y < inputCanvas.height; y++) {
+            const index = (y * inputCanvas.width + x) * 4;
+            sum += data[index]; // Red channel is at index [4 * i] in RGBA
+        }
+        redChannelSum.push(sum);
+    }
+    
+    // Apply the moving average filter with the specified kernel size
+    const smoothedData = invertArray(applyMovingAverage(redChannelSum, kernelSize));
+    
+    // Draw the chart on the second canvas
+    drawChart(chartCtx, smoothedData);
+}
+
+
+function invertArray(arr) {
+            const min = Math.min(...arr);
+            const max = Math.max(...arr);
+
+            return arr.map(value => max + min - value);
+            }
+
+// Function to apply a moving average filter
+function applyMovingAverage(data, kernelSize) {
+    const smoothed = [];
+    const halfKernel = Math.floor(kernelSize / 2);
+
+    for (let i = 0; i < data.length; i++) {
+        let sum = 0;
+        let count = 0;
+
+        // Sum values within the kernel window
+        for (let j = i - halfKernel; j <= i + halfKernel; j++) {
+            if (j >= 0 && j < data.length) {
+                sum += data[j];
+                count++;
+            }
+        }
+
+        // Calculate the average and push to the smoothed array
+        smoothed.push(sum / count);
+    }
+
+    return smoothed;
+}
+
+// Function to draw a chart on the canvas
+function drawChart(ctx, data) {
+    const maxVal = Math.max(...data);
+    const minVal = Math.min(...data);
+
+    // Clear the canvas
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    // Set up chart drawing
+    ctx.beginPath();
+    ctx.moveTo(0, ctx.canvas.height - ((data[0] - minVal) / (maxVal - minVal)) * ctx.canvas.height);
+
+    // Draw the line chart
+    for (let i = 1; i < data.length; i++) {
+        const y = ctx.canvas.height - ((data[i] - minVal) / (maxVal - minVal)) * ctx.canvas.height;
+        ctx.lineTo(i, y);
+    }
+
+    // Style the chart
+    ctx.strokeStyle = 'blue';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.closePath();
+}
+
+
+
+  </script>
+</body>
+</html>

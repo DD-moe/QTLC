@@ -34,11 +34,14 @@
       cursor: move;
       touch-action: none;
     }
-    #outputCanvas {
+    #outputCanvas{
       margin-top: 20px;
       border: 1px solid #ddd;
       width: 100%;
-      max-width: 600px;
+    }
+
+    #chartCanvas {
+        height: 250px;
     }
     #processBtn {
       margin-top: 10px;
@@ -52,12 +55,33 @@
       background-color: #45a049;
     }
     input[type="file"] {
-      position: absolute;
+      position: relative;
       top: 20px; /* Adjusted to ensure it's visible */
       left: 50%;
       transform: translateX(-50%);
       z-index: 1;
     }
+
+    .slider {
+        width: 100%;
+        position: relative;
+    }
+
+    .slider-div {
+      position: relative;
+      width: 1%;
+      background-color: #3498db;
+      height: 250px; /* Match the height of the chartCanvas */
+      top: -250px;
+      left: 0;
+      transition: left 0.1s ease;
+    }
+
+.slider-container {
+        position: relative;
+        width: 100%;
+        height: auto;
+}
   </style>
 </head>
 <body>
@@ -73,7 +97,12 @@
     <input type="number" id="greenFactor" value="0.7">
     <input type="number" id="blueFactor" value="0.1">
     <canvas id="outputCanvas"></canvas>
-    <canvas id="chartCanvas"></canvas>
+    <div id="slider-container">
+        <canvas id="chartCanvas"></canvas>
+        <div class="slider-div"></div>
+        <input type="range" class="slider" min="0" max="100" value="0">
+        <h2 id="RF_value"></h2>
+    </div>
   </div>
 
   <script>
@@ -302,7 +331,21 @@ function drawChart(ctx, data) {
     ctx.closePath();
 }
 
+const slider = document.querySelector('.slider');
+    const sliderDiv = document.querySelector('.slider-div');
 
+    slider.addEventListener('input', () => {
+        const percentage = slider.value; // Get slider value
+        sliderDiv.style.left = `${percentage}%`; // Position the div based on the slider
+    });
+
+const rfValue = document.getElementById('RF_value'); // Select the <h2> element
+
+// Add an event listener to update the <h2> text when the slider value changes
+slider.addEventListener('input', () => {
+    const value = slider.value; // Get the slider value
+    rfValue.textContent = `RF:   ${value/100}`; // Update the <h2> text content
+});
 
   </script>
 </body>

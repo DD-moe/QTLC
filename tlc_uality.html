@@ -5,106 +5,107 @@ Put your HTML text here<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TLC analyser</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 2vmin;
-        }
-        canvas {
-            border: 0px;
-            top: 0px;
-            left: 0px;
-        }
-        .resizable {
-            width: 12vmin;
-            height: 12vmin;
-            border: 0.75vmin solid red;
-            color: white;
-            font-size: 2vmin;
-            font-family: sans-serif;
-            top: 0px;
-            left: 0px;
-            overflow: hidden;
-    
-            touch-action: none;
-    
-            /* This makes things *much* easier */
-            box-sizing: border-box;
-        }
-    
-        /* Styling input[type="file"] and button */
-        input[type="file"],
-        button {
-            font-size: 2vmin; /* Use vmin for font size */
-            padding: 1.5vmin 3vmin; /* Consistent padding */
-            width: auto; /* Adjust width to fit content */
-            max-width: 100%; /* Prevent overflow */
-            box-sizing: border-box; /* Include padding in width */
-            border: 0.5vmin solid #ccc;
-            border-radius: 1vmin;
-            background-color: #f9f9f9;
-            color: #333;
-            cursor: pointer;
-            outline: none;
-            transition: background-color 0.3s ease, border-color 0.3s ease;
-        }
-    
-        /* Add hover effect */
-        input[type="file"]:hover,
-        button:hover {
-            background-color: #e6e6e6;
-            border-color: #999;
-        }
-    
-        /* Ensure inputs remain appropriately sized */
-        input[type="file"] {
-            text-align: center;
-        }
-    
-        button {
-            background-color: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-    
-        button:hover {
-            background-color: #0056b3;
-            border-color: #004085;
-        }
-    
-        /* Additional styling */
-        #basum {
-            background-color: #f0f0f0;
-        }
-    
-        #pulpit {
-            margin-top: 2vmin;
-            padding: 2vmin;
-            border: 0.5vmin solid #ccc;
-            background-color: #f9f9f9;
-        }
-    
-        #previewBox {
-            background-color: #ffffff;
-        }
-    
-        input[type="number"] {
-            font-size: 2vmin;
-            padding: 1vmin;
-            margin: 1vmin;
-            border: 0.5vmin solid #ccc;
-            border-radius: 1vmin;
-            box-sizing: border-box;
-        }
-    
-        label {
-            font-size: 2vmin;
-            margin-right: 1vmin;
-        }
-    
-        #ruler {
-            background-color: red;
-        }
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 2vh;
+}
+canvas {
+    border: 0px;
+    top: 0px;
+    left: 0px;
+}
+.resizable {
+    width: 12vh;
+    height: 12vh;
+    border: 0.75vh solid red;
+    color: white;
+    font-size: 2vh;
+    font-family: sans-serif;
+    top: 0px;
+    left: 0px;
+    overflow: hidden;
+
+    touch-action: none;
+
+    /* This makes things *much* easier */
+    box-sizing: border-box;
+}
+
+/* Styling input[type="file"] and button */
+input[type="file"],
+button {
+    font-size: 2vh; /* Use vh for font size */
+    padding: 1.5vh 3vh; /* Consistent padding */
+    width: auto; /* Adjust width to fit content */
+    max-width: 100%; /* Prevent overflow */
+    box-sizing: border-box; /* Include padding in width */
+    border: 0.5vh solid #ccc;
+    border-radius: 1vh;
+    background-color: #f9f9f9;
+    color: #333;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Add hover effect */
+input[type="file"]:hover,
+button:hover {
+    background-color: #e6e6e6;
+    border-color: #999;
+}
+
+/* Ensure inputs remain appropriately sized */
+input[type="file"] {
+    text-align: center;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+button:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+}
+
+/* Additional styling */
+#basum {
+    background-color: #f0f0f0;
+}
+
+#pulpit {
+    margin-top: 2vh;
+    padding: 2vh;
+    border: 0.5vh solid #ccc;
+    background-color: #f9f9f9;
+}
+
+#previewBox {
+    background-color: #ffffff;
+}
+
+input[type="number"] {
+    font-size: 2vh;
+    padding: 1vh;
+    margin: 1vh;
+    border: 0.5vh solid #ccc;
+    border-radius: 1vh;
+    box-sizing: border-box;
+}
+
+label {
+    font-size: 2vh;
+    margin-right: 1vh;
+}
+
+#ruler {
+    background-color: red;
+}
+
     </style>
     
     <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>

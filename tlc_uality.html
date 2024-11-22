@@ -5,114 +5,108 @@ Put your HTML text here<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TLC analyser</title>
     <style>
-        :root {
-            --ss: 1vh; /* Define a custom scaling unit */
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: calc(2 * var(--ss));
-        }
-        
-        canvas {
-            border: 0;
-            top: 0;
-            left: 0;
-        }
-        
-        .resizable {
-            width: calc(12 * var(--ss));
-            height: calc(12 * var(--ss));
-            border: calc(0.75 * var(--ss)) solid red;
-            color: white;
-            font-size: calc(2 * var(--ss));
-            font-family: sans-serif;
-            top: 0;
-            left: 0;
-            overflow: hidden;
-        
-            touch-action: none;
-        
-            /* This makes things *much* easier */
-            box-sizing: border-box;
-        }
-        
-        /* Styling input[type="file"] and button */
-        input[type="file"],
-        button {
-            font-size: calc(2 * var(--ss)); /* Use ss for font size */
-            padding: calc(1.5 * var(--ss)) calc(3 * var(--ss)); /* Consistent padding */
-            width: auto; /* Adjust width to fit content */
-            max-width: 100%; /* Prevent overflow */
-            box-sizing: border-box; /* Include padding in width */
-            border: calc(0.5 * var(--ss)) solid #ccc;
-            border-radius: calc(1 * var(--ss));
-            background-color: #f9f9f9;
-            color: #333;
-            cursor: pointer;
-            outline: none;
-            transition: background-color 0.3s ease, border-color 0.3s ease;
-        }
-        
-        /* Add hover effect */
-        input[type="file"]:hover,
-        button:hover {
-            background-color: #e6e6e6;
-            border-color: #999;
-        }
-        
-        /* Ensure inputs remain appropriately sized */
-        input[type="file"] {
-            text-align: center;
-        }
-        
-        button {
-            background-color: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-        
-        button:hover {
-            background-color: #0056b3;
-            border-color: #004085;
-        }
-        
-        /* Additional styling */
-        #basum {
-            background-color: #f0f0f0;
-        }
-        
-        #pulpit {
-            margin-top: calc(2 * var(--ss));
-            padding: calc(2 * var(--ss));
-            border: calc(0.5 * var(--ss)) solid #ccc;
-            background-color: #f9f9f9;
-        }
-        
-        #previewBox {
-            background-color: #ffffff;
-        }
-        
-        input[type="number"] {
-            font-size: calc(2 * var(--ss));
-            padding: calc(1 * var(--ss));
-            margin: calc(1 * var(--ss));
-            border: calc(0.5 * var(--ss)) solid #ccc;
-            border-radius: calc(1 * var(--ss));
-            box-sizing: border-box;
-        }
-        
-        label {
-            font-size: calc(2 * var(--ss));
-            margin-right: calc(1 * var(--ss));
-        }
-        
-        #ruler {
-            background-color: red;
-        }
-        </style>
-        
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 2vh;
+}
+canvas {
+    border: 0px;
+    top: 0px;
+    left: 0px;
+}
+.resizable {
+    width: 12vh;
+    height: 12vh;
+    border: 0.75vh solid red;
+    color: white;
+    font-size: 2vh;
+    font-family: sans-serif;
+    top: 0px;
+    left: 0px;
+    overflow: hidden;
+
+    touch-action: none;
+
+    /* This makes things *much* easier */
+    box-sizing: border-box;
+}
+
+/* Styling input[type="file"] and button */
+input[type="file"],
+button {
+    font-size: 2vh; /* Use vh for font size */
+    padding: 1.5vh 3vh; /* Consistent padding */
+    width: auto; /* Adjust width to fit content */
+    max-width: 100%; /* Prevent overflow */
+    box-sizing: border-box; /* Include padding in width */
+    border: 0.5vh solid #ccc;
+    border-radius: 1vh;
+    background-color: #f9f9f9;
+    color: #333;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Add hover effect */
+input[type="file"]:hover,
+button:hover {
+    background-color: #e6e6e6;
+    border-color: #999;
+}
+
+/* Ensure inputs remain appropriately sized */
+input[type="file"] {
+    text-align: center;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+button:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+}
+
+/* Additional styling */
+#basum {
+    background-color: #f0f0f0;
+}
+
+#pulpit {
+    margin-top: 2vh;
+    padding: 2vh;
+    border: 0.5vh solid #ccc;
+    background-color: #f9f9f9;
+}
+
+#previewBox {
+    background-color: #ffffff;
+}
+
+input[type="number"] {
+    font-size: 2vh;
+    padding: 1vh;
+    margin: 1vh;
+    border: 0.5vh solid #ccc;
+    border-radius: 1vh;
+    box-sizing: border-box;
+}
+
+label {
+    font-size: 2vh;
+    margin-right: 1vh;
+}
+
+#ruler {
+    background-color: red;
+}
+
+    </style>
     
     <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
     

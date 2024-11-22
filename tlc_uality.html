@@ -1,0 +1,478 @@
+Put your HTML text here<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TLC analyser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 2vmin;
+        }
+        canvas {
+            border: 0px;
+            top: 0px;
+            left: 0px;
+        }
+        .resizable {
+            width: 12vmin;
+            height: 12vmin;
+            border: 0.75vmin solid red;
+            color: white;
+            font-size: 2vmin;
+            font-family: sans-serif;
+            top: 0px;
+            left: 0px;
+            overflow: hidden;
+    
+            touch-action: none;
+    
+            /* This makes things *much* easier */
+            box-sizing: border-box;
+        }
+    
+        /* Styling input[type="file"] and button */
+        input[type="file"],
+        button {
+            font-size: 2vmin; /* Use vmin for font size */
+            padding: 1.5vmin 3vmin; /* Consistent padding */
+            width: auto; /* Adjust width to fit content */
+            max-width: 100%; /* Prevent overflow */
+            box-sizing: border-box; /* Include padding in width */
+            border: 0.5vmin solid #ccc;
+            border-radius: 1vmin;
+            background-color: #f9f9f9;
+            color: #333;
+            cursor: pointer;
+            outline: none;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+    
+        /* Add hover effect */
+        input[type="file"]:hover,
+        button:hover {
+            background-color: #e6e6e6;
+            border-color: #999;
+        }
+    
+        /* Ensure inputs remain appropriately sized */
+        input[type="file"] {
+            text-align: center;
+        }
+    
+        button {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+    
+        button:hover {
+            background-color: #0056b3;
+            border-color: #004085;
+        }
+    
+        /* Additional styling */
+        #basum {
+            background-color: #f0f0f0;
+        }
+    
+        #pulpit {
+            margin-top: 2vmin;
+            padding: 2vmin;
+            border: 0.5vmin solid #ccc;
+            background-color: #f9f9f9;
+        }
+    
+        #previewBox {
+            background-color: #ffffff;
+        }
+    
+        input[type="number"] {
+            font-size: 2vmin;
+            padding: 1vmin;
+            margin: 1vmin;
+            border: 0.5vmin solid #ccc;
+            border-radius: 1vmin;
+            box-sizing: border-box;
+        }
+    
+        label {
+            font-size: 2vmin;
+            margin-right: 1vmin;
+        }
+    
+        #ruler {
+            background-color: red;
+        }
+    </style>
+    
+    <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+    
+    <body>
+    
+        <h1>Upload an Image to Canvas</h1>
+        <input type="file" id="imageInput" accept="image/*">
+    
+        <div id="basum" style="position:relative; border: 0.5vmin solid black; width: 90vmin; height: 60vmin;">
+            <canvas id="imageCanvas" style="position:absolute"></canvas>
+            <div class="resizable" style="position:absolute"></div>
+        </div>
+    
+        <button onclick="processTrack()">Process Track</button>
+    
+        <div style="margin: 2vmin;">
+            <label for="red">Red:</label>
+            <input type="number" id="red" value="0.2">
+    
+            <label for="green">Green:</label>
+            <input type="number" id="green" value="0.7">
+    
+            <label for="blue">Blue:</label>
+            <input type="number" id="blue" value="0.1">
+        </div>
+    
+        <div id="previewBox" style="position:relative; border: 0.5vmin solid black; width: 90vmin; height: 60vmin;">
+            <canvas id="trackCanvas" style="position:relative"></canvas>    
+            <canvas id="chartCanvas" style="position:relative"></canvas>  
+            <div id="ruler" style="position: absolute; width: 1px; background-color: red; top:0;"></div>
+        </div>
+    
+        <div id="pulpit">
+            <h3 id="posMarker"></h3>
+        </div>
+    
+    </body>
+    
+
+
+    <script>
+        // Get elements
+        const imageInput = document.getElementById('imageInput');
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+        const map_box = document.getElementById('basum');
+        const prev_box = document.getElementById('previewBox');
+        const red_factor = document.getElementById('red');
+        const green_factor = document.getElementById('green');
+        const blue_factor = document.getElementById('blue');
+
+        // Event listener for file input change
+        imageInput.addEventListener('change', handleImageUpload);
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        // Set canvas size to image size
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        map_box.style.height = img.height+'px';
+                        map_box.style.width = img.width+'px';
+
+                        // Draw the image on the canvas
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, img.width, img.height);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+interact('.resizable')
+  .resizable({
+    edges: { top: true, left: true, bottom: true, right: true },
+    listeners: {
+      move: function (event) {
+        let { x, y } = event.target.dataset
+
+        x = (parseFloat(x) || 0) + event.deltaRect.left
+        y = (parseFloat(y) || 0) + event.deltaRect.top
+
+        Object.assign(event.target.style, {
+          width: `${event.rect.width}px`,
+          height: `${event.rect.height}px`,
+          transform: `translate(${x}px, ${y}px)`
+        })
+
+        Object.assign(event.target.dataset, { x, y })
+      }
+    }
+  });
+        
+// Initialize the position object
+let position = { x: 0, y: 0 };
+
+interact('.resizable').draggable({
+  listeners: {
+    start(event) {
+      console.log(event.type, event.target);
+
+      // Get the current position of the element
+      const computedStyle = window.getComputedStyle(event.target);
+      position.x = parseFloat(computedStyle.left) || 0;
+      position.y = parseFloat(computedStyle.top) || 0;
+    },
+    move(event) {
+      // Update position based on drag delta
+      position.x += event.dx;
+      position.y += event.dy;
+
+      // Apply updated top and left properties
+      event.target.style.left = `${position.x}px`;
+      event.target.style.top = `${position.y}px`;
+    },
+  }
+});  
+
+// Initialize the position object
+let positionRuler = { x: 0, y: 0 };
+
+// Define the allowed range for horizontal movement (in pixels)
+const horizontalRange = { min: 50, max: 300 };
+
+function setupRuler(height, min, max, top) {
+  const ruler = document.getElementById('ruler');
+  if (ruler) {
+    ruler.style.height = `${height}px`;
+    ruler.style.top = `${top}px`;
+    horizontalRange. min = min;
+    horizontalRange.max = max;
+  }
+}
+
+const current_position = document.getElementById('posMarker');
+
+interact('#ruler').draggable({
+  listeners: {
+    start(event) {
+      console.log(event.type, event.target);
+
+      // Get the current position of the element
+      const computedStyle = window.getComputedStyle(event.target);
+      positionRuler.x = parseFloat(computedStyle.left) || 0;
+      positionRuler.y = parseFloat(computedStyle.top) || 0;
+    },
+    move(event) {
+      // Update horizontal position based on drag delta
+      let newX = positionRuler.x + event.dx;
+
+      // Constrain the horizontal position within the defined range
+      if (newX < horizontalRange.min) {
+        newX = horizontalRange.min;
+      } else if (newX > horizontalRange.max) {
+        newX = horizontalRange.max;
+      }
+
+      positionRuler.x = newX;
+      current_position.textContent = `peak Position:   ${newX / horizontalRange.max}`;
+
+      // Apply updated top and left properties (only left changes since we constrain to horizontal)
+      event.target.style.left = `${positionRuler.x}px`;
+    },
+  },
+});
+
+
+function processTrack() {
+            // Select elements
+            const imageCanvas = document.getElementById("imageCanvas");
+            const trackCanvas = document.getElementById("trackCanvas");
+            const resizableDiv = document.querySelector(".resizable");
+
+            const imageCtx = imageCanvas.getContext("2d");
+            const trackCtx = trackCanvas.getContext("2d");
+
+            // Extract dimensions of the resizable area
+            const resizableBounds = resizableDiv.getBoundingClientRect();
+            const imageBounds = imageCanvas.getBoundingClientRect();
+            const sx = resizableBounds.left - imageBounds.left;
+            const sy = resizableBounds.top - imageBounds.top;
+            const sw = resizableBounds.width;
+            const sh = resizableBounds.height;
+
+            // Get image data from the specified area
+            const imageData = imageCtx.getImageData(sx, sy, sw, sh);
+
+            // Grayscale processing factors
+            const rFactor = parseFloat(red_factor.value);
+            const gFactor = parseFloat(green_factor.value);
+            const bFactor = parseFloat(blue_factor.value);
+
+            // Process image data
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const gray = r * rFactor + g * gFactor + b * bFactor;
+                data[i] = data[i + 1] = data[i + 2] = gray; // Set RGB to grayscale value
+            }
+
+            // Update trackCanvas size
+            trackCanvas.width = sw;
+            trackCanvas.height = sh;
+            const chart_height = 100;
+            prev_box.style.height = (sh - 1 + chart_height)+'px';
+            prev_box.style.width = (sw-1)+'px';
+
+
+            // Draw processed image data on trackCanvas
+            trackCtx.putImageData(imageData, 0, 0);
+
+            const track = walkingAverage(invertArray(sumColumns('trackCanvas')), 3);
+            drawChart(chart_height, track, 'chartCanvas');
+            const peaks = findPeaks(track);
+            drawPeaks('chartCanvas', peaks)
+            setupRuler(chart_height, 0, sw - 1, sh - 1);
+        }
+
+        function sumColumns(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas with ID "${canvasId}" not found.`);
+                return [];
+            }
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error(`Canvas with ID "${canvasId}" does not support 2D rendering.`);
+                return [];
+            }
+
+            // Get the dimensions of the canvas
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Extract image data from the entire canvas
+            const imageData = ctx.getImageData(0, 0, width, height).data;
+
+            // Initialize the column sums
+            const columnSums = new Array(width).fill(0);
+
+            // Calculate column sums
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const pixelIndex = (y * width + x) * 4; // Index in RGBA array
+                    columnSums[x] += imageData[pixelIndex]; // Use the red channel (grayscale assumed)
+                }
+            }
+
+            return columnSums;
+        }
+
+        function drawChart(chartHeight, columnSums, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas with ID "${canvasId}" not found.`);
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error(`Canvas with ID "${canvasId}" does not support 2D rendering.`);
+                return;
+            }
+
+            // Use the length of columnSums as the width.
+            const width = columnSums.length;
+
+            // Normalize the data to fit the chart height.
+            const maxVal = Math.max(...columnSums);
+            const minVal = Math.min(...columnSums);
+            const normalizedSums = columnSums.map(val => ((val - minVal) / (maxVal - minVal)) * chartHeight);
+
+            // Clear the canvas.
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Set canvas dimensions to match chart requirements.
+            canvas.width = width;
+            canvas.height = chartHeight;
+
+            // Draw the chart.
+            ctx.beginPath();
+            ctx.moveTo(0, chartHeight - normalizedSums[0]); // Start at the first column.
+            for (let x = 1; x < width; x++) {
+                ctx.lineTo(x, chartHeight - normalizedSums[x]); // Draw lines to subsequent columns.
+            }
+            ctx.strokeStyle = 'black'; // Chart color.
+            ctx.lineWidth = 1; // Chart line width.
+            ctx.stroke();
+        }
+
+        function invertArray(arr) {
+            const min = Math.min(...arr);
+            const max = Math.max(...arr);
+
+            return arr.map(value => max + min - value);
+            }
+
+        function walkingAverage(arr, kernelSize) {
+            let smoothedArr = new Array(arr.length).fill(0);
+            let halfKernel = Math.floor(kernelSize / 2);
+
+            for (let i = 0; i < arr.length; i++) {
+                let sum = 0;
+                let count = 0;
+                
+                // Calculate the average within the kernel window
+                for (let j = -halfKernel; j <= halfKernel; j++) {
+                let index = i + j;
+                if (index >= 0 && index < arr.length) {
+                    sum += arr[index];
+                    count++;
+                }
+                }
+                
+                smoothedArr[i] = sum / count;
+            }
+
+            return smoothedArr;
+            }
+
+    function findPeaks(arr) {
+        let peaks = [];
+        
+        // Iterate over the array and check for local maxima
+        for (let i = 1; i < arr.length - 1; i++) {
+            if (arr[i] > arr[i - 1] && arr[i] > arr[i + 1]) {
+            peaks.push(i);
+            }
+        }
+
+        return peaks;
+        }
+
+    function drawPeaks(canvasId, peaks) {
+        // Get the canvas element by ID
+        const canvas = document.getElementById(canvasId);
+        
+        if (!canvas) {
+            console.error('Canvas not found');
+            return;
+        }
+
+        // Get the 2D context for drawing
+        const ctx = canvas.getContext('2d');
+        
+        // Iterate through the peaks and draw a vertical line at each x position
+        peaks.forEach(peak => {
+            const x = peak; // x position of the peak
+            // Draw a 1px wide vertical line from top to bottom of the canvas
+            ctx.beginPath();
+            ctx.moveTo(x, 0); // Start from the top (y=0)
+            ctx.lineTo(x, canvas.height); // End at the bottom (y=canvas.height)
+            ctx.strokeStyle = 'green'; // Line color (change if necessary)
+            ctx.lineWidth = 1; // Line width
+            ctx.stroke(); // Actually draw the line
+        });
+    }
+
+    </script>
+
+</body>
+</html>

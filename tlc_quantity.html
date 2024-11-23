@@ -87,17 +87,35 @@
 <body>
   <div id="container">
     <input type="file" id="imageInput" accept="image/*">
+    <input type="file" id="backgroundInput" accept="image/*">
     <br>
     <br>
     <br>
     <canvas id="canvas"></canvas>
+    <canvas id="Dcanvas" style="display: none;"></canvas>
     <div class="resizable" style="width: 100px; height: 100px; top: 50px; left: 50px;"></div>
     <button id="processBtn">track - analysis</button>
-    <button id="processBtn">quantitive - analysis</button>
+    <button id="quantBtn">quantitive - analysis</button>
     <br>
-    <input type="number" id="redFactor" value="0.2">
-    <input type="number" id="greenFactor" value="0.7">
-    <input type="number" id="blueFactor" value="0.1">
+    <div>
+        <label for="redFactor">Red Factor:</label>
+        <input type="number" id="redFactor" value="0.2">
+      </div>
+      
+      <div>
+        <label for="greenFactor">Green Factor:</label>
+        <input type="number" id="greenFactor" value="0.7">
+      </div>
+      
+      <div>
+        <label for="blueFactor">Blue Factor:</label>
+        <input type="number" id="blueFactor" value="0.1">
+      </div>
+      
+      <div>
+        <label for="blurrFactor">Blur Factor:</label>
+        <input type="number" id="blurrFactor" value="4">
+      </div>      
     <canvas id="outputCanvas"></canvas>
     <div id="slider-container">
         <canvas id="chartCanvas"></canvas>
@@ -110,16 +128,20 @@
   <script>
     // Get elements
     const imageInput = document.getElementById('imageInput');
+    const backgroundInput = document.getElementById('backgroundInput');
     const canvas = document.getElementById('canvas');
+    const Dcanvas = document.getElementById('Dcanvas');
     const outputCanvas = document.getElementById('outputCanvas');
     const ctx = canvas.getContext('2d');
+    const Dctx = Dcanvas.getContext('2d');
     const outputCtx = outputCanvas.getContext('2d');
     const resizableDiv = document.querySelector('.resizable');
     const processBtn = document.getElementById('processBtn');
+    const quantBtn = document.getElementById('quantBtn');
 
     let originalImageWidth, originalImageHeight;
 
-    // Load image onto canvas
+    // Load image onto data / viewer canvas
     imageInput.addEventListener('change', function (event) {
       const file = event.target.files[0];
       const reader = new FileReader();
@@ -136,6 +158,29 @@
 
           // Scale canvas display size to fit the viewport (CSS handles this)
           ctx.drawImage(img, 0, 0, img.width, img.height);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Load image onto canvas
+    backgroundInput.addEventListener('change', function (event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          // Set the original image width and height
+          originalImageWidth = img.width;
+          originalImageHeight = img.height;
+
+          // Set canvas to the original image size (preserving quality)
+          Dcanvas.width = img.width;
+          Dcanvas.height = img.height;
+
+          // Scale canvas display size to fit the viewport (CSS handles this)
+          Dctx.drawImage(img, 0, 0, img.width, img.height);
         };
         img.src = e.target.result;
       };
@@ -179,6 +224,42 @@
           }
         }
       });
+
+// Handle process button click
+quantBtn.addEventListener('click', function () {
+    const resizableRect = resizableDiv.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    
+    // Calculate the part of the canvas that is inside the resizable div
+    const sx = (resizableRect.left - canvasRect.left) * (originalImageWidth / canvasRect.width);
+    const sy = (resizableRect.top - canvasRect.top) * (originalImageHeight / canvasRect.height);
+    const sWidth = resizableRect.width * (originalImageWidth / canvasRect.width);
+    const sHeight = resizableRect.height * (originalImageHeight / canvasRect.height);
+
+    // Get the image data from the selected part of the canvas
+    const imageData = ctx.getImageData(sx, sy, sWidth, sHeight);
+    const bcgData = Dctx.getImageData(sx, sy, sWidth, sHeight);
+
+    // Get the grayscale factors from the input elements by their IDs
+    const redFactor = parseFloat(document.getElementById('redFactor').value);
+    const greenFactor = parseFloat(document.getElementById('greenFactor').value);
+    const blueFactor = parseFloat(document.getElementById('blueFactor').value);
+
+    // Process the image data to grayscale using the provided factors
+    const grayscaleImageData = processTrack(imageData.data, sHeight, sWidth, redFactor, greenFactor, blueFactor);
+    const grayscaleBcgData = processTrack(bcgData.data, sHeight, sWidth, redFactor, greenFactor, blueFactor);
+    const blurr = parseInt(document.getElementById('blurrFactor').value);
+    const bluredBcgData = gaussianBlur(grayscaleBcgData, sWidth, sHeight, blurr);
+    const normalised = pixelwiseDivisionAndNormalize(grayscaleImageData, bluredBcgData);
+    // Create a new ImageData object with the processed grayscale data
+    const processedImageData = new ImageData(normalised , sWidth, sHeight);
+
+    // Draw the grayscale image data to the output canvas
+    outputCanvas.width = sWidth;
+    outputCanvas.height = sHeight;
+    outputCtx.putImageData(processedImageData, 0, 0);
+    processCanvasData('outputCanvas', 'chartCanvas', kernelSize = 5);
+});
 
 // Handle process button click
 processBtn.addEventListener('click', function () {
@@ -233,12 +314,108 @@ function processTrack(imagedata, height, width, redFactor, greenFactor, blueFact
         grayscaleImageData[i] = grayscale;       // Red channel
         grayscaleImageData[i + 1] = grayscale;   // Green channel
         grayscaleImageData[i + 2] = grayscale;   // Blue channel
-        grayscaleImageData[i + 3] = imagedata[i + 3]; // Alpha channel (unchanged)
+        grayscaleImageData[i + 3] = 255; // Alpha channel (unchanged)
     }
 
     // Return the modified image data
     return grayscaleImageData;
 }
+
+// Gaussian blur function in vanilla JavaScript
+function gaussianBlur(data, width, height, radius) {
+  const kernel = createGaussianKernel(radius);
+
+  const blurredData = new Uint8ClampedArray(data);  // Create a copy to store the blurred data
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let r = 0, g = 0, b = 0, a = 0, weightSum = 0;
+
+      // Apply the kernel
+      for (let ky = -radius; ky <= radius; ky++) {
+        for (let kx = -radius; kx <= radius; kx++) {
+          const pixelX = x + kx;
+          const pixelY = y + ky;
+
+          if (pixelX >= 0 && pixelX < width && pixelY >= 0 && pixelY < height) {
+            const weight = kernel[ky + radius][kx + radius];
+            const idx = (pixelY * width + pixelX) * 4;
+            r += data[idx] * weight;
+            g += data[idx + 1] * weight;
+            b += data[idx + 2] * weight;
+            a += data[idx + 3] * weight;
+            weightSum += weight;
+          }
+        }
+      }
+
+      // Normalize the result by dividing by the sum of the weights
+      const idx = (y * width + x) * 4;
+      blurredData[idx] = r / weightSum;
+      blurredData[idx + 1] = g / weightSum;
+      blurredData[idx + 2] = b / weightSum;
+      blurredData[idx + 3] = a / weightSum;
+    }
+  }
+
+  // Return new ImageData with the blurred pixels
+  return blurredData
+}
+
+// Create a Gaussian kernel
+function createGaussianKernel(radius) {
+  const size = radius * 2 + 1;
+  const kernel = Array(size).fill().map(() => Array(size).fill(0));
+  const sigma = radius / 2;
+  const mean = radius;
+  let sum = 0;
+
+  for (let y = -radius; y <= radius; y++) {
+    for (let x = -radius; x <= radius; x++) {
+      const g = Math.exp(-(x * x + y * y) / (2 * sigma * sigma)) / (2 * Math.PI * sigma * sigma);
+      kernel[y + radius][x + radius] = g;
+      sum += g;
+    }
+  }
+
+  // Normalize the kernel so that the sum of weights is 1
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      kernel[y][x] /= sum;
+    }
+  }
+
+  return kernel;
+}
+
+
+function pixelwiseDivisionAndNormalize(imageData1, imageData2) {
+    // Create a new array to store the result
+    const resultImageData = new Uint8ClampedArray(imageData1.length);
+
+    // Iterate through the pixel data
+    for (let i = 0; i < imageData1.length; i += 4) {
+        // Perform division for each channel
+        const red = imageData2[i] === 0 ? 0 : imageData1[i] / imageData2[i];
+        const green = imageData2[i + 1] === 0 ? 0 : imageData1[i + 1] / imageData2[i + 1];
+        const blue = imageData2[i + 2] === 0 ? 0 : imageData1[i + 2] / imageData2[i + 2];
+
+        // Normalize to 0-255 by multiplying by 255
+        const normalizedRed = Math.min(Math.round(red * 255), 255);
+        const normalizedGreen = Math.min(Math.round(green * 255), 255);
+        const normalizedBlue = Math.min(Math.round(blue * 255), 255);
+
+        // Set normalized values to the result array
+        resultImageData[i] = normalizedRed;       // Red channel
+        resultImageData[i + 1] = normalizedGreen; // Green channel
+        resultImageData[i + 2] = normalizedBlue;  // Blue channel
+        resultImageData[i + 3] = 255; // Alpha channel (unchanged)
+    }
+
+    // Return the modified image data
+    return resultImageData;
+}
+
 
 function processCanvasData(inputCanvasId, chartCanvasId, kernelSize = 5) {
     // Get the canvas and its context

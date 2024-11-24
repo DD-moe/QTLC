@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Processor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 1em;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    input[type="file"] {
+      margin: 1em 0;
+    }
+    #slider-container {
+      display: flex;
+      align-items: center;
+      margin: 1em 0;
+    }
+    #slider {
+      margin: 0 1em;
+      width: 80%;
+    }
+    canvas {
+      display: none;
+    }
+    #preview-canvas {
+      display: block;
+      margin-top: 1em;
+      border: 1px solid #ccc;
+      width: 90%;
+      max-width: 300px;
+      height: auto;
+    }
+    button {
+      padding: 0.5em 1em;
+      font-size: 1em;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    #data-container {
+        width: 50%;
+        height: 20%;
+        overflow: auto;
+        border: 1px solid #ccc;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: center;
+    }
+
+    th {
+        background-color: #f4f4f4;
+    }
+
+  </style>
+</head>
+<body>
+
+  <h1>Mobile Image Processor</h1>
+
+  <!-- File Inputs -->
+  <label for="data-file">Upload Data Image:</label>
+  <input type="file" id="data-file" accept="image/*">
+  <label for="background-file">Upload Background Image:</label>
+  <input type="file" id="background-file" accept="image/*">
+  <label for="percentageInput">Percent of darkest pixels to detect spot:</label>
+  <input type="number" id="percentageInput" value="15" min="0" max="100">
+
+  <!-- Slider -->
+  <div id="slider-container">
+    <label for="slider">Box Size: </label>
+    <input type="range" id="slider" min="10" max="100" value="50">
+    <span id="slider-value">50</span>
+  </div>
+
+  <!-- Button -->
+  <button id="process-button">Process</button>
+
+  <!-- Hidden Canvases -->
+  <canvas id="data-canvas"></canvas>
+  <canvas id="background-canvas"></canvas>
+
+  <!-- Preview Canvas -->
+  <canvas id="preview-canvas"></canvas>
+  <h2 id="resultBox">average: </h2>
+  <h2 id="predictionBox">Predicted value: </h2> 
+  <div>
+    <label for="substance-concentration">Substance Concentration:</label>
+    <input type="number" id="substance-concentration">
+    <button id="add-measurement">Add Measurement</button>
+    <button onclick="createConcentrationCurve()">Create Concentration Curve</button>
+    <button onclick="predictConcentration()">Predict Concentration</button>
+    <div id="formuldBox">Formula not ready yet</div>
+  </div>
+
+  <div id="data-container"></div>
+
+  <script>
+    const dataInput = document.getElementById('data-file');
+    const backgroundInput = document.getElementById('background-file');
+    const slider = document.getElementById('slider');
+    const sliderValue = document.getElementById('slider-value');
+    const processButton = document.getElementById('process-button');
+    const dataCanvas = document.getElementById('data-canvas');
+    const dataCtx = dataCanvas.getContext('2d');
+    const backgroundCanvas = document.getElementById('background-canvas');
+    const bcgCtx = backgroundCanvas.getContext('2d');
+    const previewCanvas = document.getElementById('preview-canvas');
+    const previewCtx = previewCanvas.getContext('2d');
+    const percentageInput = document.getElementById("percentageInput");
+    const resultBox = document.getElementById("resultBox");
+    const concentrationInput = document.getElementById('substance-concentration');
+    const predictionBox = document.getElementById('predictionBox');
+
+    let current_average = 0;
+    const measurements = []; // 2D array for storing data
+    current_curve = {}; // object to store linear reggression formula
+
+    // Update slider value display
+    slider.addEventListener('input', () => {
+      sliderValue.textContent = slider.value;
+    });
+
+    // Load image into the corresponding canvas
+    function loadImageToCanvas(input, canvas) {
+      input.style.color = "black";
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+        };
+        img.src = reader.result;
+        input.style.color = "green";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    dataInput.addEventListener('change', () => loadImageToCanvas(dataInput, dataCanvas));
+    backgroundInput.addEventListener('change', () => loadImageToCanvas(backgroundInput, backgroundCanvas));
+
+    // Process button action
+    processButton.addEventListener('click', () => {
+      const boxSize = parseInt(slider.value, 10);
+      const dataWidth = dataCanvas.width;
+      const dataHeight = dataCanvas.height;
+
+      if (dataWidth === 0 || dataHeight === 0) {
+        alert('Please upload a data image first.');
+        return;
+      }
+
+      // Calculate the box dimensions
+      const boxHalf = Math.floor(boxSize / 2);
+      const centerX = Math.floor(dataWidth / 2);
+      const centerY = Math.floor(dataHeight / 2);
+      const startX = centerX - boxHalf;
+      const startY = centerY - boxHalf;
+
+      // Draw the box to the preview canvas
+      previewCanvas.width = boxSize;
+      previewCanvas.height = boxSize;
+      // get image data prepared to normalzation
+      const imageData = dataCtx.getImageData(startX, startY, boxSize, boxSize);
+      const grayData = toGrayscale(imageData, 0.2, 0.7, 0.1);
+      previewCtx.putImageData(grayData, 0, 0);
+      previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
+      previewCtx.drawImage(previewCanvas, 0, 0);   
+      previewCtx.filter = 'none';
+      const readyData = previewCtx.getImageData(10, 10, boxSize-10, boxSize-10);
+      // get image data prepared to normalzation
+      const bcgData = bcgCtx.getImageData(startX, startY, boxSize, boxSize);
+      const grayBcg = toGrayscale(bcgData, 0.2, 0.7, 0.1);
+      previewCtx.putImageData(grayBcg, 0, 0);
+      previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
+      previewCtx.drawImage(previewCanvas, 0, 0);   
+      previewCtx.filter = 'none';
+      const readyBcg = previewCtx.getImageData(10, 10, boxSize-10, boxSize-10);
+      const normalised = divideImageDataAndNormalize(readyData, readyBcg);
+      previewCanvas.width = boxSize - 20;
+      previewCanvas.height = boxSize - 20;
+      const percentage = parseFloat(percentageInput.value);
+      const detectedSpotImage = processImageData(normalised, percentage);
+      previewCtx.putImageData(detectedSpotImage, 0, 0);
+      current_average = calculateAverage(detectedSpotImage);
+      resultBox.textContent = `average: ${current_average}`;
+      if (Object.keys(current_curve).length !== 0) {
+        predictConcentration();
+      }
+    });
+
+    function toGrayscale(imageData, rFactor, gFactor, bFactor) {
+    const { width, height, data } = imageData;
+    const newImageData = new ImageData(width, height);
+
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];     // Red channel
+        const g = data[i + 1]; // Green channel
+        const b = data[i + 2]; // Blue channel
+
+        // Calculate grayscale value
+        const gray = Math.round(r * rFactor + g * gFactor + b * bFactor);
+
+        // Set grayscale value for the pixel
+        newImageData.data[i] = gray;     // Red
+        newImageData.data[i + 1] = gray; // Green
+        newImageData.data[i + 2] = gray; // Blue
+        newImageData.data[i + 3] = data[i + 3]; // Alpha remains unchanged
+    }
+
+    return newImageData;
+}
+
+function divideImageDataAndNormalize(imageData1, imageData2) {
+    if (
+        imageData1.width !== imageData2.width || 
+        imageData1.height !== imageData2.height
+    ) {
+        throw new Error("ImageData objects must have the same dimensions");
+    }
+
+    const width = imageData1.width;
+    const height = imageData1.height;
+
+    // Create a new ImageData object to store the result
+    const resultImageData = new ImageData(width, height);
+
+    const data1 = imageData1.data;
+    const data2 = imageData2.data;
+    const resultData = resultImageData.data;
+
+    for (let i = 0; i < data1.length; i += 4) {
+        // Divide each channel (R, G, B) and normalize to 0-255
+        for (let j = 0; j < 3; j++) {
+            const value1 = data1[i + j];
+            const value2 = data2[i + j];
+            const resultValue = value2 === 0 ? 0 : (value1 / value2) * 255;
+            resultData[i + j] = Math.min(Math.max(Math.round(resultValue), 0), 255);
+        }
+
+        // Copy the alpha channel without modification
+        resultData[i + 3] = data1[i + 3];
+    }
+
+    return resultImageData;
+}
+
+function processImageData(imageData, percentage) {
+    const data = imageData.data;
+    const grayValues = [];
+
+    // Extract grayscale values
+    for (let i = 0; i < data.length; i += 4) {
+        grayValues.push(data[i]); // Red channel (same for R, G, and B in grayscale)
+    }
+
+    // Sort grayscale values to find the cutoff
+    grayValues.sort((a, b) => a - b);
+    const cutoffIndex = Math.floor((percentage / 100) * grayValues.length);
+    const cutoffValue = grayValues[cutoffIndex];
+
+    // Process image
+    const outputData = new Uint8ClampedArray(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+        const grayValue = data[i];
+        if (grayValue > cutoffValue) {
+            // Brighter pixels: set green and blue to 0
+            outputData[i] = data[i];     // Red
+            outputData[i + 1] = 0;       // Green
+            outputData[i + 2] = 64;       // Blue
+            outputData[i + 3] = data[i + 3]; // Alpha
+        } else {
+            // Darker pixels remain unchanged
+            outputData[i] = data[i];
+            outputData[i + 1] = data[i + 1];
+            outputData[i + 2] = data[i + 2];
+            outputData[i + 3] = data[i + 3];
+        }
+    }
+
+    return new ImageData(outputData, imageData.width, imageData.height);
+}
+
+function calculateAverage(imageData) {
+    const { data, width, height } = imageData; // Extract data, width, and height
+    let sum = 0; // Variable to accumulate the red channel values
+    let pixelCount = 0; // Counter for the number of pixels meeting the criteria
+
+    // Iterate through all pixels
+    for (let i = 0; i < data.length; i += 4) {
+        const red = data[i];      // Red channel
+        const green = data[i + 1]; // Green channel
+        const blue = data[i + 2];  // Blue channel
+
+        // Check if green is 0 and blue is 64
+        if (green === 0 && blue === 64) {
+            sum += red; // Add red channel value to the sum
+            pixelCount++; // Increment the count of valid pixels
+        }
+    }
+
+    // Calculate the average (avoid division by zero)
+    return pixelCount > 0 ? sum / pixelCount : 0;
+}
+
+document.getElementById('add-measurement').addEventListener('click', () => {
+    const concentrationValue = parseFloat(concentrationInput.value);
+
+    if (isNaN(concentrationValue)) {
+        alert('Please enter a valid number for substance concentration.');
+        return;
+    }
+
+    // Add the measurement to the array
+    measurements.push([current_average, concentrationValue]);
+
+    // Update the table
+    updateTable();
+});
+
+function updateTable() {
+    const container = document.getElementById('data-container');
+    container.innerHTML = ''; // Clear the existing content
+
+    const table = document.createElement('table');
+
+    // Create the header row
+    const headerRow = document.createElement('tr');
+    const headers = ['Current Average', 'Substance Concentration'];
+    headers.forEach(headerText => {
+        const th = document.createElement('th');
+        th.textContent = headerText;
+        headerRow.appendChild(th);
+    });
+    table.appendChild(headerRow);
+
+    // Add rows from the measurements array
+    measurements.forEach(measurement => {
+        const row = document.createElement('tr');
+        measurement.forEach(value => {
+            const td = document.createElement('td');
+            td.textContent = value;
+            row.appendChild(td);
+        });
+        table.appendChild(row);
+    });
+
+    container.appendChild(table);
+}
+
+function createConcentrationCurve() {
+            // Calculate linear regression coefficients
+            current_curve = linearRegression(measurements);
+            displayFormula(current_curve, 'formuldBox');
+
+        }
+
+function predictConcentration(){
+    const predicted = predictOutput(current_average, current_curve);
+    predictionBox.textContent = `Predicted value: ${predicted}`;
+}        
+
+        function linearRegression(data) {
+            const n = data.length;
+
+            // Calculate sums
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+            for (const [x, y] of data) {
+                sumX += x;
+                sumY += y;
+                sumXY += x * y;
+                sumX2 += x * x;
+                sumY2 += y * y;
+            }
+
+            // Calculate slope (m) and intercept (b)
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            // Calculate R² (linearity index)
+            const meanY = sumY / n;
+            let ssTotal = 0, ssResidual = 0;
+            for (const [x, y] of data) {
+                const predictedY = slope * x + intercept;
+                ssTotal += (y - meanY) ** 2;
+                ssResidual += (y - predictedY) ** 2;
+            }
+            const r2 = 1 - ssResidual / ssTotal;
+
+            return { slpoe:slope, intercept:intercept, r2:r2 };
+        }
+
+    // Predict output using linear regression results
+    function predictOutput(input, regressionResults) {
+        const { slpoe: slope, intercept } = regressionResults;
+        return slope * input + intercept;
+    }
+
+    function displayFormula(regressionResults, formulaDivId) {
+        const { slpoe: slope, intercept, r2 } = regressionResults;
+        
+        // Construct the formula string
+        const formula = `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)}`;
+        const linearityIndex = `R² = ${r2.toFixed(4)}`;
+
+        // Display in the specified formula div
+        const formulaDiv = document.getElementById(formulaDivId);
+        if (formulaDiv) {
+            formulaDiv.innerHTML = `<p>Linear Regression Formula: ${formula}</p>
+                                    <p>Linearity Index: ${linearityIndex}</p>`;
+        } else {
+            console.error(`Div with id "${formulaDivId}" not found.`);
+        }
+    }
+
+
+  </script>
+
+</body>
+</html>

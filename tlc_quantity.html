@@ -251,8 +251,9 @@ quantBtn.addEventListener('click', function () {
     const blurr = parseInt(document.getElementById('blurrFactor').value);
     const bluredBcgData = gaussianBlur(grayscaleBcgData, sWidth, sHeight, blurr);
     const normalised = pixelwiseDivisionAndNormalize(grayscaleImageData, bluredBcgData);
+    const detected = processImage(normalised, sWidth, sHeight);
     // Create a new ImageData object with the processed grayscale data
-    const processedImageData = new ImageData(normalised , sWidth, sHeight);
+    const processedImageData = new ImageData(detected, sWidth, sHeight);
 
     // Draw the grayscale image data to the output canvas
     outputCanvas.width = sWidth;
@@ -260,6 +261,67 @@ quantBtn.addEventListener('click', function () {
     outputCtx.putImageData(processedImageData, 0, 0);
     processCanvasData('outputCanvas', 'chartCanvas', kernelSize = 5);
 });
+
+function processImage(rgbaArray, width, height) {
+    // Helper function to calculate pixel brightness
+
+    console.log(rgbaArray);
+    // Get top and bottom portion of the image (2% to 12% and 88% to 98%)
+    const topStart = Math.floor(height * 0.02);
+    const topEnd = Math.floor(height * 0.12);
+    const bottomStart = Math.floor(height * 0.88);
+    const bottomEnd = Math.floor(height * 0.98);
+
+    let allPixels = [];
+
+    // Loop through top and bottom portions of the image
+    for (let y = topStart; y < topEnd; y++) {
+        for (let x = 0; x < width; x++) {
+            const index = (y * width + x) * 4;
+            const r = rgbaArray[index];
+            allPixels.push(r);
+        }
+    }
+
+    for (let y = bottomStart; y < bottomEnd; y++) {
+        for (let x = 0; x < width; x++) {
+            const index = (y * width + x) * 4;
+            const r = rgbaArray[index];
+            allPixels.push(r);
+        }
+    }
+
+    // Sort all pixel brightness values to find the cut point for the darkest 5%
+    allPixels.sort((a, b) => a - b);
+    const cutPointIndex = Math.floor(allPixels.length * 0.05);
+    const cutPoint = allPixels[cutPointIndex];
+    console.log(allPixels);
+    
+    let darkPixelCount = 0;
+
+    // Now process the entire image
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const index = (y * width + x) * 4;
+            const r = rgbaArray[index];
+
+            const brightness = r;
+
+            if (brightness <= cutPoint) {
+                // Darker pixels: count and keep their values
+                darkPixelCount++;
+            } else {
+                // Brighter pixels: set green and blue channels to 0
+                rgbaArray[index + 1] = 0; // green channel
+                rgbaArray[index + 2] = 0; // blue channel
+            }
+        }
+    }
+
+    // Return modified image and dark pixel count
+    return rgbaArray;
+}
+
 
 // Handle process button click
 processBtn.addEventListener('click', function () {

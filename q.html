@@ -82,6 +82,8 @@
   <input type="file" id="background-file" accept="image/*">
   <label for="percentageInput">Percent of darkest pixels to detect spot:</label>
   <input type="number" id="percentageInput" value="15" min="0" max="100">
+  <label for="constTreshold">Use constant treshold instead percental</label>
+  <input type="checkbox" id="constTreshold">
 
   <!-- Slider -->
   <div id="slider-container">
@@ -125,11 +127,12 @@
     const previewCanvas = document.getElementById('preview-canvas');
     const previewCtx = previewCanvas.getContext('2d');
     const percentageInput = document.getElementById("percentageInput");
+    const constTreshold = document.getElementById('constTreshold');
     const resultBox = document.getElementById("resultBox");
     const concentrationInput = document.getElementById('substance-concentration');
     const predictionBox = document.getElementById('predictionBox');
 
-    let current_average = 0;
+    let current_sum = 0;
     const measurements = []; // 2D array for storing data
     current_curve = {}; // object to store linear reggression formula
 
@@ -204,8 +207,9 @@
       const percentage = parseFloat(percentageInput.value);
       const detectedSpotImage = processImageData(normalised, percentage);
       previewCtx.putImageData(detectedSpotImage, 0, 0);
-      current_average = calculateAverage(detectedSpotImage);
-      resultBox.textContent = `average: ${current_average}`;
+      const {sum, average, pixelCount} = calculateSum(detectedSpotImage);
+      current_sum = sum;
+      resultBox.textContent = `average: ${average},   sum: ${current_sum},   surface: ${pixelCount}`;
       if (Object.keys(current_curve).length !== 0) {
         predictConcentration();
       }
@@ -270,22 +274,26 @@ function divideImageDataAndNormalize(imageData1, imageData2) {
 function processImageData(imageData, percentage) {
     const data = imageData.data;
     const grayValues = [];
+    let cutoffValue = percentage;
 
-    // Extract grayscale values
-    for (let i = 0; i < data.length; i += 4) {
-        grayValues.push(data[i]); // Red channel (same for R, G, and B in grayscale)
+    if (!constTreshold.checked) {
+        // Extract grayscale values
+        for (let i = 0; i < data.length; i += 4) {
+            grayValues.push(data[i]); // Red channel (same for R, G, and B in grayscale)
+        }
+
+        // Sort grayscale values to find the cutoff
+        grayValues.sort((a, b) => a - b);
+        const cutoffIndex = Math.floor((percentage / 100) * grayValues.length);
+        cutoffValue = grayValues[cutoffIndex]; 
     }
 
-    // Sort grayscale values to find the cutoff
-    grayValues.sort((a, b) => a - b);
-    const cutoffIndex = Math.floor((percentage / 100) * grayValues.length);
-    const cutoffValue = grayValues[cutoffIndex];
 
     // Process image
     const outputData = new Uint8ClampedArray(data.length);
     for (let i = 0; i < data.length; i += 4) {
         const grayValue = data[i];
-        if (grayValue > cutoffValue) {
+        if (grayValue >= cutoffValue) {
             // Brighter pixels: set green and blue to 0
             outputData[i] = data[i];     // Red
             outputData[i + 1] = 0;       // Green
@@ -303,7 +311,7 @@ function processImageData(imageData, percentage) {
     return new ImageData(outputData, imageData.width, imageData.height);
 }
 
-function calculateAverage(imageData) {
+function calculateSum(imageData) {
     const { data, width, height } = imageData; // Extract data, width, and height
     let sum = 0; // Variable to accumulate the red channel values
     let pixelCount = 0; // Counter for the number of pixels meeting the criteria
@@ -315,14 +323,13 @@ function calculateAverage(imageData) {
         const blue = data[i + 2];  // Blue channel
 
         // Check if green is 0 and blue is 64
-        if (green === 0 && blue === 64) {
-            sum += red; // Add red channel value to the sum
+        if (green !== 0 && blue !== 64) {
+            sum += (255 - red); // Add red channel value to the sum
             pixelCount++; // Increment the count of valid pixels
         }
     }
-
-    // Calculate the average (avoid division by zero)
-    return pixelCount > 0 ? sum / pixelCount : 0;
+    const average = pixelCount > 0 ? sum / pixelCount : 0;
+    return {sum, average, pixelCount};
 }
 
 document.getElementById('add-measurement').addEventListener('click', () => {
@@ -334,7 +341,7 @@ document.getElementById('add-measurement').addEventListener('click', () => {
     }
 
     // Add the measurement to the array
-    measurements.push([current_average, concentrationValue]);
+    measurements.push([current_sum, concentrationValue]);
 
     // Update the table
     updateTable();
@@ -378,7 +385,7 @@ function createConcentrationCurve() {
         }
 
 function predictConcentration(){
-    const predicted = predictOutput(current_average, current_curve);
+    const predicted = predictOutput(current_sum, current_curve);
     predictionBox.textContent = `Predicted value: ${predicted}`;
 }        
 

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creating a Concentration Curve</title>
+    <link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+    <header>
+        <h1 style="color: red; text-align: center;">Feature Under Development</h1>
+        <p style="text-align: center;">This feature is currently under development. Other features are temporarily unavailable.</p>
+        <h1>Creating a Concentration Curve</h1>
+        <p>A guide to building a concentration curve from your TLC results, enabling precise quantification and comparisons across samples.</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>Step-by-Step Instructions</h2>
+            <ol>
+                <li>
+                    <p>Use a constant threshold instead of a percentage-based one for spot detection. While percentage-based detection is effective for spots with strong, high-contrast borders, it may miss pixels on spots with smooth, gradient-like borders.</p>
+                </li>
+                <li>
+                    <p>Be cautious when adding measurements to the table displaying substance concentration/amount and spot intensity. Currently, there is no way to delete incorrect measurements from the table, so ensure accuracy during the initial data input.</p>
+                </li>
+                <li>
+                    <p>When testing on another device, calculate the "ratio to adjust to the blueprint model." For example, if the standardization spot's total intensity in your model is 4350 and on the other device it is 2175, the adjustment ratio should be 2 to normalize the results and account for resolution differences.</p>
+                </li>
+                <li>
+                    <p>Best way is to create a standardization spot for consistent results. To do this:</p>
+                    <ul>
+                        <li>Print a solid black spot (4mm diameter recommended) on thick paper using a standard black ink printer.</li>
+                        <li>Attach the spot to a piece of plexiglass or another stiff material to ensure durability and consistent positioning.</li>
+                        <li>Always use a fully black spot to achieve reliable standardization.</li>
+                    </ul>
+                </li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>Tips for Building Accurate Concentration Curves</h2>
+            <p>Follow these guidelines for precise quantification and effective comparisons across samples:</p>
+            <ul>
+                <li>Ensure consistent lighting and positioning of your TLC plates to avoid artifacts during spot detection.</li>
+                <li>Regularly recalibrate your system using the standardization spot to maintain consistency across different devices or experimental setups.</li>
+                <li>Document all parameters used during the analysis, such as threshold values, to ensure reproducibility.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Illustrative Examples</h2>
+            <p>Refer to the images below for a visual guide on building a concentration curve:</p>
+            <div id="examples">
+                <!-- Placeholder for images -->
+                <div>
+                    <img src="threshold-comparison.png" alt="Threshold Comparison for Spot Detection" style="max-width: 100%;">
+                    <p>Comparison of constant vs. percentage-based thresholds for spot detection.</p>
+                </div>
+                <div>
+                    <img src="standardization-spot.png" alt="Standardization Spot Example" style="max-width: 100%;">
+                    <p>Example of a standardization spot printed on thick paper and mounted on plexiglass.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

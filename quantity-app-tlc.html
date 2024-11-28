@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Using the Quantity App</title>
+    <link rel="stylesheet" href="wiki.css">
+</head>
+<body>
+    <header>
+        <h1>Using the Quantity App</h1>
+        <p>Step-by-step instructions for using the Quantity App for full TLC analysis, including quantitative data processing and advanced features.</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>Step 1: Positioning the Smartphone and Marker</h2>
+            <ol>
+                <li>
+                    Position your smartphone camera so that the cross-shaped marker is centered in the camera app’s viewfinder. The center point of the camera app should align with the marker’s cross center.
+                </li>
+                <li>
+                    Rotate the smartphone so that the top border of the phone faces the same direction as the arrow on one arm of the marker.
+                </li>
+            </ol>
+            <div>
+                <!-- Placeholder for an image illustrating the correct smartphone and marker alignment -->
+            </div>
+        </section>
+
+        <section>
+            <h2>Step 2: Capturing TLC Plate Images</h2>
+            <ol>
+                <li>
+                    Move the plate so that the spot intended for analysis is positioned under the central pointer in the camera app. Capture the image using pro mode.
+                </li>
+                <li>
+                    Move the plate to an area without any spots (a clear section of the plate) under the central pointer. Capture another image using the same pro mode settings.
+                </li>
+            </ol>
+            <div>
+                <!-- Placeholder for an image showing the correct plate positioning and camera setup -->
+            </div>
+        </section>
+
+        <section>
+            <h2>Step 3: Uploading Images</h2>
+            <ol>
+                <li>Upload the spot image to the "Data Image" file input.</li>
+                <li>Upload the clear plate image to the "Background Image" file input.</li>
+                <li>Click the "Process Image" button to proceed.</li>
+            </ol>
+            <div>
+                <!-- Placeholder for an image showing the app's upload interface -->
+            </div>
+        </section>
+
+        <section>
+            <h2>Step 4: Spot Detection Parameters</h2>
+            <ol>
+                <li>
+                    <strong>Percent of Darkest Pixels:</strong> This input determines how much of the total pixels are included in intensity calculations.
+                </li>
+                <li>
+                    <strong>Constant Threshold:</strong> If the "Use Constant Threshold" checkbox is selected, the app uses a fixed threshold value. For example, entering 238 includes all pixels with values equal to or lower than 238.
+                </li>
+                <li>
+                    <strong>Box Size Slider:</strong> Crops the image to a box size determined by the slider. From the image's center, n/2 pixels in each direction are analyzed.
+                </li>
+            </ol>
+            <div>
+                <!-- Placeholder for an image showing parameter inputs and sliders -->
+            </div>
+        </section>
+
+        <section>
+            <h2>Step 5: Image Processing Results</h2>
+            <p>
+                Below the input fields, a preview of the cropped and grayscaled image is displayed. Once the "Process Image" button is clicked, the following results are shown:
+            </p>
+            <ul>
+                <li>Average pixel intensity</li>
+                <li>Average threshold</li>
+                <li>Total spot intensity</li>
+                <li>Total spot threshold</li>
+            </ul>
+            <div>
+                <!-- Placeholder for an image showing the results preview -->
+            </div>
+        </section>
+
+        <section>
+            <h2>Step 6: Concentration Curve and Prediction</h2>
+            <ol>
+                <li>
+                    If a concentration curve is available, predictions are made automatically when processing the image. To manually trigger predictions, click the "Predict Concentration" button.
+                </li>
+                <li>
+                    To create a concentration curve:
+                    <ul>
+                        <li>Enter the real substance quantity or concentration in the "Substance Concentration" field for each measurement.</li>
+                        <li>Click the "Add Measurement" button after each entry.</li>
+                        <li>Once all measurements are added, click "Create Concentration Curve." The data will be displayed in a white box below the table.</li>
+                    </ul>
+                </li>
+            </ol>
+            <div>
+                <!-- Placeholder for an image showing concentration curve inputs and results -->
+            </div>
+        </section>
+
+        <section>
+            <h2>Step 7: Model Scaling and Metadata</h2>
+            <ol>
+                <li>
+                    Use the "Ratio to Adjust" input to scale the total spot intensity to match the source model used for the concentration curve. This accounts for differences such as varying camera resolutions.
+                </li>
+                <li>
+                    Add metadata for standardization:
+                    <ul>
+                        <li>Enter a name for the substance in the "Substance Name" field.</li>
+                        <li>Provide a description of the model in the "Model Description" field.</li>
+                    </ul>
+                </li>
+            </ol>
+            <div>
+                <!-- Placeholder for an image showing metadata inputs -->
+            </div>
+        </section>
+
+        <section>
+            <h2>Step 8: Sharing Model Data</h2>
+            <p>
+                Use the "Copy Paste Model Data" field to share model data with other users. The data updates automatically when the cursor enters this field, so you can copy the latest data. When pasted into another app instance, the data is automatically applied.
+            </p>
+            <div>
+                <!-- Placeholder for an image showing the copy-paste functionality -->
+            </div>
+        </section>
+    </main>
+</body>
+</html>
+

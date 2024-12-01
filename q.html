@@ -23,10 +23,16 @@ body {
   line-height: 1.6;
 }
 
+br {
+    line-height: 0; /* Removes extra spacing */
+    margin: 0;      /* Ensures no margin is added */
+    display: block; /* Ensures it still acts as a block-level element */
+  }
+
 /* Input Fields */
 input {
-  margin: 1em 0;
-  padding: 0.5em;
+  margin: 0.4em 0;
+  padding: 0.2em;
   font-size: 1.5em;
   border: 1px solid blueviolet;
   background-color: #d4c8d8;
@@ -39,13 +45,13 @@ input {
 #slider-container {
   display: flex;
   align-items: center;
-  margin: 1.5em 0;
+  margin: 0.1em 0;
   width: 100%;
   max-width: 600px;
 }
 
 #slider {
-  margin: 0 1em;
+  margin: 0.1em;
   flex: 1;
   max-width: 500px;
 }
@@ -69,7 +75,7 @@ canvas {
 
 /* Buttons */
 button {
-  padding: 0.7em 1.5em;
+  padding: 0.3em 0.7em;
   font-size: 1.5em;
   font-weight: bold;
   cursor: pointer;
@@ -77,7 +83,7 @@ button {
   color: white;
   border: none;
   border-radius: 5px;
-  margin: 1em auto;
+  margin: 0.5em auto;
   transition: background-color 0.3s ease;
   display: block;
 }
@@ -96,8 +102,8 @@ button:hover {
   border: 1px solid #ccc;
   border-radius: 5px;
   background-color: #fff;
-  margin: 2em 0;
-  padding: 1em;
+  margin: 0.6em 0;
+  padding: 0.4em;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -130,13 +136,13 @@ tr:hover {
 /* Labels and Text */
 label {
   font-weight: bold;
-  margin-bottom: 0.5em;
+  margin-bottom: 0.2em;
   display: block;
   font-size: 1.2em;
 }
 
 p {
-  margin: 1em 0;
+  margin: 0.4em 0;
   font-size: 1.2em;
   color: #555;
 }
@@ -149,7 +155,7 @@ span {
 
 /* Headings */
 h1, h2 {
-  margin: 0.5em 0;
+  margin: 0.2em 0;
   text-align: center;
   font-weight: bold;
   color: #007BFF;
@@ -166,7 +172,7 @@ h2 {
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   body {
-    padding: 1em;
+    padding: 0.3em;
   }
   
   #slider-container {
@@ -176,7 +182,7 @@ h2 {
 
   #slider {
     width: 100%;
-    margin: 1em 0;
+    margin: 0.2em 0;
   }
 
   button {
@@ -190,6 +196,11 @@ h2 {
     font-size: 0.9em;
   }
 }
+
+  input[type="checkbox"] {
+    height: 1em;
+    width: 1em;
+  }
 
   </style>
 </head>
@@ -210,7 +221,11 @@ h2 {
   <!-- Slider -->
   <div id="slider-container">
     <label for="slider">Box Size: <span id="slider-value">50</span></label>
-    <input type="range" id="slider" min="10" max="100" value="50">
+    <input type="range" id="slider" min="10" max="150" value="50">
+    <label for="slider_L">Shift left: <span id="slider-value_L">0</span></label>
+    <input type="range" id="slider_L" min="-50" max="50" value="0">   
+    <label for="slider_T">Shift top: <span id="slider-value_T">0</span></label>
+    <input type="range" id="slider_T" min="-50" max="50" value="0">      
   </div>
 
   <!-- Button -->
@@ -222,7 +237,7 @@ h2 {
 
   <!-- Preview Canvas -->
   <canvas id="preview-canvas"></canvas>
-  <h2 id="resultBox">average: </h2>
+  <div id="resultBox">average: </div>
   <h2 id="predictionBox">Predicted value: </h2> 
   <label for="substance-concentration">Substance Concentration:</label>
   <input type="number" id="substance-concentration">
@@ -247,8 +262,14 @@ h2 {
   <script>
     const dataInput = document.getElementById('data-file');
     const backgroundInput = document.getElementById('background-file');
+    // sliders
     const slider = document.getElementById('slider');
     const sliderValue = document.getElementById('slider-value');
+    const slider_L = document.getElementById('slider_L');
+    const sliderValue_L = document.getElementById('slider-value_L');
+    const slider_T = document.getElementById('slider_T');
+    const sliderValue_T = document.getElementById('slider-value_T');    
+    // process
     const processButton = document.getElementById('process-button');
     const dataCanvas = document.getElementById('data-canvas');
     const dataCtx = dataCanvas.getContext('2d');
@@ -272,10 +293,16 @@ h2 {
 
     sharableData.addEventListener("focus",  getSharableData);
 
-    // Update slider value display
+    // Update sliders value display
     slider.addEventListener('input', () => {
       sliderValue.textContent = slider.value;
     });
+    slider_L.addEventListener('input', () => {
+      sliderValue_L.textContent = slider_L.value;
+    });
+    slider_T.addEventListener('input', () => {
+      sliderValue_T.textContent = slider_T.value;
+    });    
 
     // Update slider value display
     sharableData.addEventListener('input', () => {
@@ -287,6 +314,8 @@ h2 {
       percentageInput.value = data.percentageInput;
       constTreshold.checked = data.constTreshold;
       slider.value = data.slider;
+      slider_L.value = data.slider_L;
+      slider_T.value = data.slider_T;
       displayFormula(current_curve, 'formuldBox');
     });
 
@@ -298,7 +327,9 @@ h2 {
         substanceName : substanceName.value,
         percentageInput : percentageInput.value,
         constTreshold : constTreshold.checked,
-        slider : slider.value
+        slider : slider.value,
+        slider_L : slider_L.value,
+        slider_T : slider_T.value
       }
       sharableData.value = JSON.stringify(data);
     }
@@ -329,6 +360,8 @@ h2 {
     // Process button action
     processButton.addEventListener('click', () => {
       const boxSize = parseInt(slider.value, 10);
+      const boxShiftLeft = parseInt(slider_L.value);
+      const boxShiftTop = parseInt(slider_T.value);
       const dataWidth = dataCanvas.width;
       const dataHeight = dataCanvas.height;
 
@@ -341,8 +374,8 @@ h2 {
       const boxHalf = Math.floor(boxSize / 2);
       const centerX = Math.floor(dataWidth / 2);
       const centerY = Math.floor(dataHeight / 2);
-      const startX = centerX - boxHalf;
-      const startY = centerY - boxHalf;
+      const startX = centerX - boxHalf - boxShiftLeft;
+      const startY = centerY - boxHalf - boxShiftTop;
 
       // Draw the box to the preview canvas
       previewCanvas.width = boxSize;
@@ -371,7 +404,10 @@ h2 {
       previewCtx.putImageData(detectedSpotImage, 0, 0);
       const {sum, average, pixelCount, average_color} = calculateSum(detectedSpotImage);
       current_sum = sum;
-      resultBox.textContent = `average: ${average},   sum: ${current_sum},   surface: ${pixelCount},   average color: ${average_color}`;
+      resultBox.innerHTML = `<h2>average spot intensity:   <span>${average}</span></h2>
+      <h2>sum of pixels:   <span>${current_sum}</span></h2>
+      <h2>spot area:   <span>${pixelCount}</span></h2>
+      <h2>average pixel intensity:   <span>${average_color}</span></h2>`;
       if (Object.keys(current_curve).length !== 0) {
         predictConcentration();
       }

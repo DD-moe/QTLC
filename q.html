@@ -252,8 +252,8 @@ h2 {
   <br>
   <label for="resolutionRatio">ratio to adjust to blueprint model</label>
   <input type="number" id="resolutionRatio" value="1">
-  <label for="sharableData">Copy paste model data</label>
-  <input type="text" id="sharableData">
+  <button id="sharableData_paste">Paste model data</button>
+  <button id="sharableData_copy">Copy model data</button>
   <label for="substanceName">Substance name</label>
   <input type="text" id="substanceName">
   <label for="modelComment">model description</label>
@@ -282,7 +282,8 @@ h2 {
     const resultBox = document.getElementById("resultBox");
     const concentrationInput = document.getElementById('substance-concentration');
     const predictionBox = document.getElementById('predictionBox');
-    const sharableData = document.getElementById('sharableData');
+    const sharableData_paste= document.getElementById('sharableData_paste');
+    const sharableData_copy = document.getElementById('sharableData_copy');
     const resolutionRatio = document.getElementById('resolutionRatio');
     const modelComment = document.getElementById('modelComment');
     const substanceName = document.getElementById('substanceName');
@@ -291,7 +292,8 @@ h2 {
     const measurements = []; // 2D array for storing data
     current_curve = {}; // object to store linear reggression formula
 
-    sharableData.addEventListener("focus",  getSharableData);
+    sharableData_paste.addEventListener("click",  setSharableData);
+    sharableData_copy.addEventListener("click",  getSharableData);
 
     // Update sliders value display
     slider.addEventListener('input', () => {
@@ -305,8 +307,10 @@ h2 {
     });    
 
     // Update slider value display
-    sharableData.addEventListener('input', () => {
-      const data = JSON.parse(sharableData.value);
+    async function setSharableData(){
+      try {
+      const clipboardText = await navigator.clipboard.readText();
+      const data = JSON.parse(clipboardText);
       current_curve = data.current_curve;
       resolutionRatio.value = data.resolutionRatio;
       modelComment.value = data.modelComment;
@@ -314,12 +318,21 @@ h2 {
       percentageInput.value = data.percentageInput;
       constTreshold.checked = data.constTreshold;
       slider.value = data.slider;
+      sliderValue.textContent = slider.value;
       slider_L.value = data.slider_L;
+      sliderValue_L.textContent = slider_L.value;
       slider_T.value = data.slider_T;
+      sliderValue_T.textContent = slider_T.value;
       displayFormula(current_curve, 'formuldBox');
-    });
+      }
+      catch(error){
+        console.error('Error pasting from clipboard:', error);
+        alert('Failed to paste from clipboard');
+      }
+    }
 
-    function getSharableData() {
+    async function getSharableData() {
+      try {
       const data = {
         current_curve : current_curve,
         resolutionRatio : resolutionRatio.value,
@@ -331,7 +344,12 @@ h2 {
         slider_L : slider_L.value,
         slider_T : slider_T.value
       }
-      sharableData.value = JSON.stringify(data);
+      await navigator.clipboard.writeText(JSON.stringify(data));
+    }
+    catch (error) {
+      console.error('Error copying to clipboard:', error);
+      alert('Failed to copy to clipboard');
+    }
     }
 
     // Load image into the corresponding canvas
@@ -628,6 +646,17 @@ function predictConcentration(){
     }
 
     function displayFormula(regressionResults, formulaDivId) {
+
+      const formulaDiv = document.getElementById(formulaDivId);
+      if (Object.keys(regressionResults).length === 0 ) {
+        if (formulaDiv) {
+          formulaDiv.innerHTML = `<p>No Data to Create Formula</p>`;
+        } else {
+          console.error(`Div with id "${formulaDivId}" not found.`);
+        }
+        
+      }
+      else{
         const { slpoe: slope, intercept, r2 } = regressionResults;
         
         // Construct the formula string
@@ -635,7 +664,6 @@ function predictConcentration(){
         const linearityIndex = `R² = ${r2.toFixed(8)}`;
 
         // Display in the specified formula div
-        const formulaDiv = document.getElementById(formulaDivId);
         if (formulaDiv) {
             formulaDiv.innerHTML = `<p>Linear Regression Formula: ${formula}</p>
                                     <p>Linearity Index: ${linearityIndex}</p>
@@ -643,6 +671,7 @@ function predictConcentration(){
         } else {
             console.error(`Div with id "${formulaDivId}" not found.`);
         }
+      }
     }
 
 

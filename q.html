@@ -213,7 +213,6 @@ h2 {
     }
 
     .section {
-      display: block; /* Initially hidden */
       color: #333;
       display: flex;
       flex-direction: column;
@@ -230,7 +229,7 @@ h2 {
 
   <!-- File Inputs -->
    <div class="section_border">
-    <h3 onclick="toggleVisibility('s_inputs')">File input Panel</h3>
+    <h3 onclick="toggleVisibility('s_inputs', 'section_border_title')" name="Input Panel" id="section_border_title">(hide) Input Panel</h3>
     <div class="section" id="s_inputs">
       <label for="data-file">Upload Data Image:</label>
       <input type="file" id="data-file" accept="image/*">
@@ -245,10 +244,12 @@ h2 {
 
   <!-- Slider -->
   <div class="section_border">
-    <h3 onclick="toggleVisibility('slider-container')">Sliders Panel</h3>   
+    <h3 onclick="toggleVisibility('slider-container', 'slider-container_title')" name="Slider Panel" id="slider-container_title">(hide) Slider Panel</h3>
     <div id="slider-container" class="section">
-      <label for="slider">Box Size: <span id="slider-value">50</span></label>
-      <input type="range" id="slider" min="10" max="150" value="50" class="slider"><br>
+      <label for="slider_X">Box Size X: <span id="slider-value_X">50</span></label>
+      <input type="range" id="slider_X" min="10" max="150" value="50" class="slider"><br>
+      <label for="slider_Y">Box Size Y: <span id="slider-value_Y">50</span></label>
+      <input type="range" id="slider_Y" min="10" max="150" value="50" class="slider"><br>      
       <label for="slider_L">Shift left: <span id="slider-value_L">0</span></label>
       <input type="range" id="slider_L" min="-50" max="50" value="0" class="slider"><br>   
       <label for="slider_T">Shift top: <span id="slider-value_T">0</span></label>
@@ -265,35 +266,53 @@ h2 {
   <canvas id="background-canvas"></canvas>
 
   <!-- Preview Canvas -->
-  <canvas id="preview-canvas"></canvas>
-  <div id="resultBox">average: </div>
-  <h2 id="predictionBox">Predicted value: </h2> 
-  <label for="substance-concentration">Substance Concentration:</label>
-  <input type="number" id="substance-concentration">
-  <div id="buttonContainer">
-    <button id="add-measurement">Add Measurement</button><br>
-    <button onclick="createConcentrationCurve()">Create Concentration Curve</button><br>
-    <button onclick="predictConcentration()">Predict Concentration</button><br>
+  <div class="section_border">
+    <h3 onclick="toggleVisibility('outcome_container', 'outcome_container_title')" name="Result Panel" id="outcome_container_title">(hide) Result Panel</h3>
+    <div id="outcome_container" class="section">
+      <canvas id="preview-canvas"></canvas>
+      <div id="resultBox">Spot Parameters not ready yet</div>
   </div>
-  <div id="formuldBox">Formula not ready yet</div><br>
+</div>
 
-  <div id="data-container"></div>
-  <br>
-  <label for="resolutionRatio">ratio to adjust to blueprint model</label>
-  <input type="number" id="resolutionRatio" value="1">
-  <button id="sharableData_paste">Paste model data</button>
-  <button id="sharableData_copy">Copy model data</button>
-  <label for="substanceName">Substance name</label>
-  <input type="text" id="substanceName">
-  <label for="modelComment">model description</label>
-  <input type="text" id="modelComment">
+<h2 id="predictionBox">Predicted value: </h2>
+
+<div class="section_border">
+  <h3 onclick="toggleVisibility('curve_container', 'curve_container_title')" name="Curve Panel" id="curve_container_title">(hide) Curve Panel</h3> 
+  <div id="curve_container" class="section">
+    <label for="substance-concentration">Substance Concentration:</label>
+    <input type="number" id="substance-concentration">
+    <div id="buttonContainer">
+      <button id="add-measurement">Add Measurement</button>
+      <button onclick="createConcentrationCurve()">Create Concentration Curve</button>
+      <button onclick="predictConcentration()">Predict Concentration</button>
+    </div>
+    <div id="formuldBox">Formula not ready yet</div><br>
+    <div id="data-container"></div>
+  </div>
+</div>
+
+<div class="section_border">
+  <h3 onclick="toggleVisibility('model_container', 'model_container_title')" name="Model Panel" id="model_container_title">(hide) Model Panel</h3> 
+  <div id="model_container" class="section">  
+    <label for="resolutionRatio">ratio to adjust to blueprint model</label>
+    <input type="number" id="resolutionRatio" value="1">
+    <button id="sharableData_paste">Paste model data</button>
+    <button id="sharableData_copy">Copy model data</button>
+    <label for="substanceName">Substance name</label>
+    <input type="text" id="substanceName">
+    <label for="modelComment">model description</label>
+    <input type="text" id="modelComment">
+  </div>
+</div>
 
   <script>
     const dataInput = document.getElementById('data-file');
     const backgroundInput = document.getElementById('background-file');
     // sliders
-    const slider = document.getElementById('slider');
-    const sliderValue = document.getElementById('slider-value');
+    const slider_X = document.getElementById('slider');
+    const sliderValue_X = document.getElementById('slider-value_X');
+    const slider_Y = document.getElementById('slider');
+    const sliderValue_Y = document.getElementById('slider-value_Y');    
     const slider_L = document.getElementById('slider_L');
     const sliderValue_L = document.getElementById('slider-value_L');
     const slider_T = document.getElementById('slider_T');
@@ -324,20 +343,26 @@ h2 {
     sharableData_paste.addEventListener("click",  setSharableData);
     sharableData_copy.addEventListener("click",  getSharableData);
 
-    function toggleVisibility(ID) {
+    function toggleVisibility(ID, tittle_ID) {
       const section = document.getElementById(ID);
+      const tittle = document.getElementById(tittle_ID);
       if (section.style.display === "none") {
-        section.style.display = "block"; // Show the element
+        section.style.display = "flex"; // Show the element
+        tittle.textContent = `(hide) ${tittle.getAttribute("name")}`
       } else {
         section.style.display = "none"; // Hide the element
+        tittle.textContent = `(show) ${tittle.getAttribute("name")}`
       }
     }
 
 
     // Update sliders value display
-    slider.addEventListener('input', () => {
-      sliderValue.textContent = slider.value;
+    slider_X.addEventListener('input', () => {
+      sliderValue_X.textContent = slider_X.value;
     });
+    slider_Y.addEventListener('input', () => {
+      sliderValue_Y.textContent = slider_Y.value;
+    });    
     slider_L.addEventListener('input', () => {
       sliderValue_L.textContent = slider_L.value;
     });
@@ -356,8 +381,10 @@ h2 {
       substanceName.value = data.substanceName;
       percentageInput.value = data.percentageInput;
       constTreshold.checked = data.constTreshold;
-      slider.value = data.slider;
-      sliderValue.textContent = slider.value;
+      slider_X.value = data.slider_X;
+      sliderValue_X.textContent = slider_X.value;
+      slider_Y.value = data.slider_Y;
+      sliderValue_Y.textContent = slider_Y.value;      
       slider_L.value = data.slider_L;
       sliderValue_L.textContent = slider_L.value;
       slider_T.value = data.slider_T;
@@ -379,7 +406,8 @@ h2 {
         substanceName : substanceName.value,
         percentageInput : percentageInput.value,
         constTreshold : constTreshold.checked,
-        slider : slider.value,
+        slider_X : slider_X.value,
+        slider_Y : slider_Y.value,
         slider_L : slider_L.value,
         slider_T : slider_T.value
       }
@@ -416,7 +444,8 @@ h2 {
 
     // Process button action
     processButton.addEventListener('click', () => {
-      const boxSize = parseInt(slider.value, 10);
+      const boxSize_X = parseInt(slider_X.value, 10);
+      const boxSize_Y = parseInt(slider_Y.value, 10);
       const boxShiftLeft = parseInt(slider_L.value);
       const boxShiftTop = parseInt(slider_T.value);
       const dataWidth = dataCanvas.width;
@@ -428,34 +457,35 @@ h2 {
       }
 
       // Calculate the box dimensions
-      const boxHalf = Math.floor(boxSize / 2);
+      const boxHalf_X = Math.floor(boxSize_X / 2);
+      const boxHalf_Y = Math.floor(boxSize_Y / 2);
       const centerX = Math.floor(dataWidth / 2);
       const centerY = Math.floor(dataHeight / 2);
-      const startX = centerX - boxHalf - boxShiftLeft;
-      const startY = centerY - boxHalf - boxShiftTop;
+      const startX = centerX - boxHalf_X - boxShiftLeft;
+      const startY = centerY - boxHalf_Y - boxShiftTop;
 
       // Draw the box to the preview canvas
-      previewCanvas.width = boxSize;
-      previewCanvas.height = boxSize;
+      previewCanvas.width = boxSize_X;
+      previewCanvas.height = boxSize_Y;
       // get image data prepared to normalzation
-      const imageData = dataCtx.getImageData(startX, startY, boxSize, boxSize);
+      const imageData = dataCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
       const grayData = toGrayscale(imageData, 0.2, 0.7, 0.1);
       previewCtx.putImageData(grayData, 0, 0);
       previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
       previewCtx.drawImage(previewCanvas, 0, 0);   
       previewCtx.filter = 'none';
-      const readyData = previewCtx.getImageData(10, 10, boxSize-10, boxSize-10);
+      const readyData = previewCtx.getImageData(10, 10, boxSize_X-10, boxSize_Y-10);
       // get image data prepared to normalzation
-      const bcgData = bcgCtx.getImageData(startX, startY, boxSize, boxSize);
+      const bcgData = bcgCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
       const grayBcg = toGrayscale(bcgData, 0.2, 0.7, 0.1);
       previewCtx.putImageData(grayBcg, 0, 0);
       previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
       previewCtx.drawImage(previewCanvas, 0, 0);   
       previewCtx.filter = 'none';
-      const readyBcg = previewCtx.getImageData(10, 10, boxSize-10, boxSize-10);
+      const readyBcg = previewCtx.getImageData(10, 10, boxSize_X-10, boxSize_Y-10);
       const normalised = divideImageDataAndNormalize(readyData, readyBcg);
-      previewCanvas.width = boxSize - 20;
-      previewCanvas.height = boxSize - 20;
+      previewCanvas.width = boxSize_X - 20;
+      previewCanvas.height = boxSize_Y - 20;
       const percentage = parseFloat(percentageInput.value);
       const detectedSpotImage = processImageData(normalised, percentage);
       previewCtx.putImageData(detectedSpotImage, 0, 0);

@@ -247,9 +247,9 @@ h2 {
     <h3 onclick="toggleVisibility('slider_container', 'slider_container_title', 'auto')" name="Slider Panel" id="slider_container_title">(hide) Slider Panel</h3>
     <div id="slider_container" class="section">
       <label for="slider_X">Box Size X: <span id="slider-value_X">50</span></label>
-      <input type="range" id="slider_X" min="10" max="150" value="50" class="slider"><br>
+      <input type="range" id="slider_X" min="30" max="150" value="50" class="slider"><br>
       <label for="slider_Y">Box Size Y: <span id="slider-value_Y">50</span></label>
-      <input type="range" id="slider_Y" min="10" max="150" value="50" class="slider"><br>      
+      <input type="range" id="slider_Y" min="30" max="150" value="50" class="slider"><br>      
       <label for="slider_L">Shift left: <span id="slider-value_L">0</span></label>
       <input type="range" id="slider_L" min="-50" max="50" value="0" class="slider"><br>   
       <label for="slider_T">Shift top: <span id="slider-value_T">0</span></label>
@@ -505,7 +505,7 @@ h2 {
       previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
       previewCtx.drawImage(previewCanvas, 0, 0);   
       previewCtx.filter = 'none';
-      const readyData = previewCtx.getImageData(10, 10, boxSize_X-10, boxSize_Y-10);
+      const readyData = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
       // get image data prepared to normalzation
       const bcgData = bcgCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
       const grayBcg = toGrayscale(bcgData, 0.2, 0.7, 0.1);
@@ -513,7 +513,7 @@ h2 {
       previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
       previewCtx.drawImage(previewCanvas, 0, 0);   
       previewCtx.filter = 'none';
-      const readyBcg = previewCtx.getImageData(10, 10, boxSize_X-10, boxSize_Y-10);
+      const readyBcg = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
       const normalised = divideImageDataAndNormalize(readyData, readyBcg);
       previewCanvas.width = boxSize_X - 20;
       previewCanvas.height = boxSize_Y - 20;
@@ -521,7 +521,6 @@ h2 {
       const detectedSpotImage = processImageData(normalised, percentage);
       // data for chart
       const columnSums = calculateColumnSums(detectedSpotImage);
-      //const invertedData = invertArrayValues(columnSums); - data are already inverted - no need to revert it again
       const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
       drawLineChart(blurredData, "chartCanvas");
       // data for chart
@@ -793,7 +792,7 @@ function calculateColumnSums(imageData) {
             const blue = data[index + 2];
 
             if (green === 0 && blue === 64) continue;
-            sums[x] += red; // Add the red channel value to the sum for this column
+            sums[x] += (255 - red); // Add the red channel value to the sum for this column
         }
     }
     return sums;
@@ -865,13 +864,14 @@ function drawLineChart(data, canvasId) {
 }
 
 
-function invertArrayValues(arr) {
-    // Find the minimum and maximum values in the array
-    const min = Math.min(...arr);
-    const max = Math.max(...arr);
+function invertArrayValues(arr, maskZeros = false) {
+    // Filter array to find min and max
+    const filteredArr = maskZeros ? arr.filter(value => value !== 0) : arr;
+    const min = Math.min(...filteredArr);
+    const max = Math.max(...arr); // Max remains the same since we don't mask zeros for it
 
     // Return a new array with inverted values
-    return arr.map(value => max - (value - min));
+    return arr.map(value => (value === 0 && maskZeros) ? 0 : max - (value - min));
 }
 
   </script>

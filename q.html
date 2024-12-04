@@ -47,7 +47,7 @@ canvas {
   display: none;
 }
 
-#preview-canvas {
+.preview-canvas {
   display: block;
   margin-top: 1em;
   border: 1px solid #007BFF;
@@ -229,7 +229,7 @@ h2 {
 
   <!-- File Inputs -->
    <div class="section_border">
-    <h3 onclick="toggleVisibility('s_inputs', 'section_border_title')" name="Input Panel" id="section_border_title">(hide) Input Panel</h3>
+    <h3 onclick="toggleVisibility('s_inputs', 'section_border_title', 'auto')" name="Input Panel" id="section_border_title">(hide) Input Panel</h3>
     <div class="section" id="s_inputs">
       <label for="data-file">Upload Data Image:</label>
       <input type="file" id="data-file" accept="image/*">
@@ -244,8 +244,8 @@ h2 {
 
   <!-- Slider -->
   <div class="section_border">
-    <h3 onclick="toggleVisibility('slider-container', 'slider-container_title')" name="Slider Panel" id="slider-container_title">(hide) Slider Panel</h3>
-    <div id="slider-container" class="section">
+    <h3 onclick="toggleVisibility('slider_container', 'slider_container_title', 'auto')" name="Slider Panel" id="slider_container_title">(hide) Slider Panel</h3>
+    <div id="slider_container" class="section">
       <label for="slider_X">Box Size X: <span id="slider-value_X">50</span></label>
       <input type="range" id="slider_X" min="10" max="150" value="50" class="slider"><br>
       <label for="slider_Y">Box Size Y: <span id="slider-value_Y">50</span></label>
@@ -253,7 +253,9 @@ h2 {
       <label for="slider_L">Shift left: <span id="slider-value_L">0</span></label>
       <input type="range" id="slider_L" min="-50" max="50" value="0" class="slider"><br>   
       <label for="slider_T">Shift top: <span id="slider-value_T">0</span></label>
-      <input type="range" id="slider_T" min="-50" max="50" value="0" class="slider">      
+      <input type="range" id="slider_T" min="-50" max="50" value="0" class="slider">
+      <label for="chart_blurr">Chart Blurr kernel size</label>
+      <input type="number" id="chart_blurr" min="1" max="10" value="5">     
     </div>
 </div>
 
@@ -267,9 +269,10 @@ h2 {
 
   <!-- Preview Canvas -->
   <div class="section_border">
-    <h3 onclick="toggleVisibility('outcome_container', 'outcome_container_title')" name="Result Panel" id="outcome_container_title">(hide) Result Panel</h3>
+    <h3 onclick="toggleVisibility('outcome_container', 'outcome_container_title', 'auto')" name="Result Panel" id="outcome_container_title">(hide) Result Panel</h3>
     <div id="outcome_container" class="section">
-      <canvas id="preview-canvas"></canvas>
+      <canvas id="preview-canvas" class="preview-canvas"></canvas>
+      <canvas id="chartCanvas" class="preview-canvas"></canvas>
       <div id="resultBox">Spot Parameters not ready yet</div>
   </div>
 </div>
@@ -277,7 +280,7 @@ h2 {
 <h2 id="predictionBox">Predicted value: </h2>
 
 <div class="section_border">
-  <h3 onclick="toggleVisibility('curve_container', 'curve_container_title')" name="Curve Panel" id="curve_container_title">(hide) Curve Panel</h3> 
+  <h3 onclick="toggleVisibility('curve_container', 'curve_container_title', 'auto')" name="Curve Panel" id="curve_container_title">(hide) Curve Panel</h3> 
   <div id="curve_container" class="section">
     <label for="substance-concentration">Substance Concentration:</label>
     <input type="number" id="substance-concentration">
@@ -292,7 +295,7 @@ h2 {
 </div>
 
 <div class="section_border">
-  <h3 onclick="toggleVisibility('model_container', 'model_container_title')" name="Model Panel" id="model_container_title">(hide) Model Panel</h3> 
+  <h3 onclick="toggleVisibility('model_container', 'model_container_title', 'auto')" name="Model Panel" id="model_container_title">(hide) Model Panel</h3> 
   <div id="model_container" class="section">  
     <label for="resolutionRatio">ratio to adjust to blueprint model</label>
     <input type="number" id="resolutionRatio" value="1">
@@ -309,9 +312,9 @@ h2 {
     const dataInput = document.getElementById('data-file');
     const backgroundInput = document.getElementById('background-file');
     // sliders
-    const slider_X = document.getElementById('slider');
+    const slider_X = document.getElementById('slider_X');
     const sliderValue_X = document.getElementById('slider-value_X');
-    const slider_Y = document.getElementById('slider');
+    const slider_Y = document.getElementById('slider_Y');
     const sliderValue_Y = document.getElementById('slider-value_Y');    
     const slider_L = document.getElementById('slider_L');
     const sliderValue_L = document.getElementById('slider-value_L');
@@ -335,6 +338,13 @@ h2 {
     const resolutionRatio = document.getElementById('resolutionRatio');
     const modelComment = document.getElementById('modelComment');
     const substanceName = document.getElementById('substanceName');
+    const chart_blurr = document.getElementById('chart_blurr');
+    // containers
+    const model_container = document.getElementById('model_container');
+    const curve_container = document.getElementById('curve_container');
+    const outcome_container = document.getElementById('outcome_container');
+    const slider_container = document.getElementById('slider_container');
+    const s_inputs = document.getElementById('s_inputs');
 
     let current_sum = 0;
     const measurements = []; // 2D array for storing data
@@ -343,15 +353,26 @@ h2 {
     sharableData_paste.addEventListener("click",  setSharableData);
     sharableData_copy.addEventListener("click",  getSharableData);
 
-    function toggleVisibility(ID, tittle_ID) {
+    function toggleVisibility(ID, tittle_ID, mode) {
       const section = document.getElementById(ID);
       const tittle = document.getElementById(tittle_ID);
-      if (section.style.display === "none") {
+      if (mode == 'auto') {
+        if (section.style.display === "none") {
         section.style.display = "flex"; // Show the element
         tittle.textContent = `(hide) ${tittle.getAttribute("name")}`
       } else {
         section.style.display = "none"; // Hide the element
         tittle.textContent = `(show) ${tittle.getAttribute("name")}`
+      }
+      } else {
+        if (mode == 'flex') {
+          section.style.display = "flex"; // Show the element
+          tittle.textContent = `(hide) ${tittle.getAttribute("name")}`          
+        }
+        if (mode == 'none') {
+          section.style.display = "none"; // Hide the element
+          tittle.textContent = `(show) ${tittle.getAttribute("name")}`         
+        }
       }
     }
 
@@ -390,6 +411,11 @@ h2 {
       slider_T.value = data.slider_T;
       sliderValue_T.textContent = slider_T.value;
       displayFormula(current_curve, 'formuldBox');
+      toggleVisibility('model_container', 'model_container_title', data.model_container);
+      toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
+      toggleVisibility('outcome_container', 'outcome_container_title', data.outcome_container);
+      toggleVisibility('slider_container', 'slider_container_title', data.slider_container);
+      toggleVisibility('s_inputs', 'section_border_title', data.s_inputs);
       }
       catch(error){
         console.error('Error pasting from clipboard:', error);
@@ -409,7 +435,12 @@ h2 {
         slider_X : slider_X.value,
         slider_Y : slider_Y.value,
         slider_L : slider_L.value,
-        slider_T : slider_T.value
+        slider_T : slider_T.value,
+        model_container : model_container.style.display,
+        curve_container : curve_container.style.display,
+        outcome_container : outcome_container.style.display,
+        slider_container : slider_container.style.display,
+        s_inputs : s_inputs.style.display
       }
       await navigator.clipboard.writeText(JSON.stringify(data));
     }
@@ -488,6 +519,12 @@ h2 {
       previewCanvas.height = boxSize_Y - 20;
       const percentage = parseFloat(percentageInput.value);
       const detectedSpotImage = processImageData(normalised, percentage);
+      // data for chart
+      const columnSums = calculateColumnSums(detectedSpotImage);
+      //const invertedData = invertArrayValues(columnSums); - data are already inverted - no need to revert it again
+      const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
+      drawLineChart(blurredData, "chartCanvas");
+      // data for chart
       previewCtx.putImageData(detectedSpotImage, 0, 0);
       const {sum, average, pixelCount, average_color} = calculateSum(detectedSpotImage);
       current_sum = sum;
@@ -743,6 +780,99 @@ function predictConcentration(){
       }
     }
 
+// Function to process imageData and calculate column sums
+function calculateColumnSums(imageData) {
+    const { width, height, data } = imageData;
+    const sums = new Array(width).fill(0);
+
+    for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+            const index = (y * width + x) * 4; // Calculate the pixel index
+            const red = data[index];
+            const green = data[index + 1];
+            const blue = data[index + 2];
+
+            if (green === 0 && blue === 64) continue;
+            sums[x] += red; // Add the red channel value to the sum for this column
+        }
+    }
+    return sums;
+}
+
+
+// Function to blur an array using a kernel size
+function blurArray(inputArray, kernelSize) {
+    const outputArray = new Array(inputArray.length).fill(0);
+    const halfKernel = Math.floor(kernelSize / 2);
+
+    for (let i = 0; i < inputArray.length; i++) {
+        let sum = 0;
+        let count = 0;
+
+        for (let k = -halfKernel; k <= halfKernel; k++) {
+            const idx = i + k;
+            if (idx >= 0 && idx < inputArray.length) {
+                sum += inputArray[idx];
+                count++;
+            }
+        }
+
+        outputArray[i] = sum / count;
+    }
+    return outputArray;
+}
+
+// Function to draw a straight-line chart on a fixed-width canvas
+function drawLineChart(data, canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.error(`Canvas with id "${canvasId}" not found.`);
+        return;
+    }
+
+    const ctx = canvas.getContext("2d");
+    const canvasWidth = 500; // Fixed width
+    const canvasHeight = 100; // Fixed height
+
+    // Resize canvas to fixed dimensions
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    // Find the maximum value for normalization
+    const maxValue = Math.max(...data);
+    if (maxValue === 0) return; // Prevent division by zero
+
+    // Normalize data to fit within canvas dimensions
+    const normalizedData = data.map((value) => (value / maxValue) * canvasHeight);
+
+    // Scale data to fit the fixed width
+    const step = canvasWidth / (data.length - 1);
+
+    // Draw straight lines
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    ctx.beginPath();
+    ctx.moveTo(0, canvasHeight - normalizedData[0]);
+
+    for (let i = 1; i < data.length; i++) {
+        const x = i * step;
+        const y = canvasHeight - normalizedData[i];
+        ctx.lineTo(x, y);
+    }
+
+    ctx.strokeStyle = "blue";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+
+function invertArrayValues(arr) {
+    // Find the minimum and maximum values in the array
+    const min = Math.min(...arr);
+    const max = Math.max(...arr);
+
+    // Return a new array with inverted values
+    return arr.map(value => max - (value - min));
+}
 
   </script>
 

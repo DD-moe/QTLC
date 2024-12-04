@@ -410,6 +410,7 @@ h2 {
       sliderValue_L.textContent = slider_L.value;
       slider_T.value = data.slider_T;
       sliderValue_T.textContent = slider_T.value;
+      chart_blurr.value = data.chart_blurr;
       displayFormula(current_curve, 'formuldBox');
       toggleVisibility('model_container', 'model_container_title', data.model_container);
       toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
@@ -440,7 +441,8 @@ h2 {
         curve_container : curve_container.style.display,
         outcome_container : outcome_container.style.display,
         slider_container : slider_container.style.display,
-        s_inputs : s_inputs.style.display
+        s_inputs : s_inputs.style.display,
+        chart_blurr: chart_blurr.value
       }
       await navigator.clipboard.writeText(JSON.stringify(data));
     }

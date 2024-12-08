@@ -231,6 +231,10 @@ h2 {
    <div class="section_border">
     <h3 onclick="toggleVisibility('s_inputs', 'section_border_title', 'auto')" name="Input Panel" id="section_border_title">(hide) Input Panel</h3>
     <div class="section" id="s_inputs">
+      <label for="rotateRight90">Rotate images right by 90 deg.</label>
+      <input type="checkbox" id="rotateRight90">
+      <label for="flipHorizontally">Flip images horizontally</label>
+      <input type="checkbox" id="flipHorizontally">
       <label for="data-file">Upload Data Image:</label>
       <input type="file" id="data-file" accept="image/*">
       <label for="background-file">Upload Background Image:</label>
@@ -309,8 +313,11 @@ h2 {
 </div>
 
   <script>
+    // inputs
     const dataInput = document.getElementById('data-file');
     const backgroundInput = document.getElementById('background-file');
+    const rotateRight90 = document.getElementById('rotateRight90');
+    const flipHorizontally = document.getElementById('flipHorizontally');
     // sliders
     const slider_X = document.getElementById('slider_X');
     const sliderValue_X = document.getElementById('slider-value_X');
@@ -411,6 +418,8 @@ h2 {
       slider_T.value = data.slider_T;
       sliderValue_T.textContent = slider_T.value;
       chart_blurr.value = data.chart_blurr;
+      rotateRight90.checked = data.rotateRight90;
+      flipHorizontally.checked = data.flipHorizontally;
       displayFormula(current_curve, 'formuldBox');
       toggleVisibility('model_container', 'model_container_title', data.model_container);
       toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
@@ -442,7 +451,9 @@ h2 {
         outcome_container : outcome_container.style.display,
         slider_container : slider_container.style.display,
         s_inputs : s_inputs.style.display,
-        chart_blurr: chart_blurr.value
+        chart_blurr: chart_blurr.value,
+        rotateRight90: rotateRight90.checked, 
+        flipHorizontally: flipHorizontally.checked
       }
       await navigator.clipboard.writeText(JSON.stringify(data));
     }
@@ -452,28 +463,50 @@ h2 {
     }
     }
 
-    // Load image into the corresponding canvas
-    function loadImageToCanvas(input, canvas) {
-      input.style.color = "black";
-      const file = input.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-        };
-        img.src = reader.result;
-        input.style.color = "green";
-      };
-      reader.readAsDataURL(file);
-    }
+// Load image into the corresponding canvas with optional transformations
+function loadImageToCanvas(input, canvas, rotateRight90, flipHorizontally) {
+  input.style.color = "black";
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
 
-    dataInput.addEventListener('change', () => loadImageToCanvas(dataInput, dataCanvas));
-    backgroundInput.addEventListener('change', () => loadImageToCanvas(backgroundInput, backgroundCanvas));
+      const ctx = canvas.getContext('2d');
+
+      // Adjust canvas size for rotation if needed
+      if (rotateRight90) {
+        canvas.width = height;
+        canvas.height = width;
+        ctx.translate(height, 0); // Move the origin to the top-right corner
+        ctx.rotate(Math.PI / 2); // Rotate 90 degrees clockwise
+      } else {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      if (flipHorizontally) {
+        ctx.scale(-1, 1); // Flip horizontally
+        ctx.translate(-width, 0); // Adjust the origin back
+      }
+
+      ctx.drawImage(img, 0, 0);
+      input.style.color = "green";
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+
+    dataInput.addEventListener('change', () => loadImageToCanvas(dataInput, dataCanvas, rotateRight90.checked, flipHorizontally.checked));
+    backgroundInput.addEventListener('change', () => loadImageToCanvas(backgroundInput, backgroundCanvas, rotateRight90.checked, flipHorizontally.checked));
+    flipHorizontally.addEventListener('change', () => loadImageToCanvas(dataInput, dataCanvas, rotateRight90.checked, flipHorizontally.checked));
+    rotateRight90.addEventListener('change', () => loadImageToCanvas(dataInput, dataCanvas, rotateRight90.checked, flipHorizontally.checked));
+    
 
     // Process button action
     processButton.addEventListener('click', () => {
@@ -681,7 +714,7 @@ function updateTable() {
 
     // Create the header row
     const headerRow = document.createElement('tr');
-    const headers = ['Current Average', 'Substance Concentration'];
+    const headers = ['Current Average', 'Substance Concentration', 'Actions'];
     headers.forEach(headerText => {
         const th = document.createElement('th');
         th.textContent = headerText;
@@ -690,18 +723,33 @@ function updateTable() {
     table.appendChild(headerRow);
 
     // Add rows from the measurements array
-    measurements.forEach(measurement => {
+    measurements.forEach((measurement, index) => {
         const row = document.createElement('tr');
+
+        // Add measurement data cells
         measurement.forEach(value => {
             const td = document.createElement('td');
             td.textContent = value;
             row.appendChild(td);
         });
+
+        // Add the Delete button
+        const actionTd = document.createElement('td');
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.onclick = () => {
+            measurements.splice(index, 1); // Remove the measurement from the array
+            updateTable(); // Re-render the table
+        };
+        actionTd.appendChild(deleteButton);
+        row.appendChild(actionTd);
+
         table.appendChild(row);
     });
 
     container.appendChild(table);
 }
+
 
 function createConcentrationCurve() {
             // Calculate linear regression coefficients

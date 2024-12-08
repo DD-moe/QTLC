@@ -557,6 +557,11 @@ function loadImageToCanvas(input, canvas, rotateRight90, flipHorizontally) {
       // data for chart
       const columnSums = calculateColumnSums(detectedSpotImage);
       const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
+      const { startMountain, endMountain } = findMountainRange(blurredData, 3);
+      //console.log(startMountain, endMountain, blurredData.length - 1);
+      const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
+      console.log(PeakMetrices);
+      PeakhtmlString = objectToHtml(PeakMetrices);
       drawLineChart(blurredData, "chartCanvas");
       // data for chart
       previewCtx.putImageData(detectedSpotImage, 0, 0);
@@ -565,7 +570,8 @@ function loadImageToCanvas(input, canvas, rotateRight90, flipHorizontally) {
       resultBox.innerHTML = `<h2>average spot intensity:   <span>${average}</span></h2>
       <h2>sum of pixels:   <span>${current_sum}</span></h2>
       <h2>spot area:   <span>${pixelCount}</span></h2>
-      <h2>average pixel intensity:   <span>${average_color}</span></h2>`;
+      <h2>average pixel intensity:   <span>${average_color}</span></h2>
+      ${PeakhtmlString}`;
       if (Object.keys(current_curve).length !== 0) {
         predictConcentration();
       }
@@ -923,6 +929,151 @@ function invertArrayValues(arr, maskZeros = false) {
     // Return a new array with inverted values
     return arr.map(value => (value === 0 && maskZeros) ? 0 : max - (value - min));
 }
+
+function findMountainRange(array, maxNeighbours) {
+    const midPoint = Math.floor(array.length / 2);
+
+    function findValley(direction) {
+        let currentIndex = midPoint;
+        let neighboursToCheck = 1;
+
+        while (neighboursToCheck <= maxNeighbours) {
+            const leftIndex = currentIndex - neighboursToCheck * direction;
+            const rightIndex = currentIndex + neighboursToCheck * direction;
+
+            // Ensure indices are within bounds
+            const leftValue = leftIndex >= 0 ? array[leftIndex] : Infinity;
+            const rightValue = rightIndex < array.length ? array[rightIndex] : Infinity;
+
+            const currentValue = array[currentIndex];
+
+            if (leftValue > currentValue && rightValue > currentValue) {
+                // Valley found
+                return currentIndex;
+            }
+
+            if (leftValue === currentValue || rightValue === currentValue) {
+                // Plateau detected, expand neighbour check
+                neighboursToCheck++;
+            } else {
+                // No valley found in this expansion, try further
+                currentIndex += direction;
+            }
+        }
+
+        // No valley found within the allowed neighbours
+        return { startMountain: 0, endMountain: array.length - 1 };
+    }
+
+    const start = findValley(-1); // Look left for start of the mountain
+    const end = findValley(1);   // Look right for end of the mountain
+
+    if (start !== null && end !== null) {
+        return { startMountain : start, endMountain: end };
+    } else {
+        throw new Error("Mountain start or end could not be determined within given constraints.");
+    }
+}
+
+function calculateMountainMetrics(array, start, end) {
+  //console.log(array, start, end);
+    const mountain = array.slice(start, end + 1);
+    const peakIndex = findPeakIndex(mountain) + start; // Adjust to original array index
+    const peakHeight = array[peakIndex];
+
+    // Calculate Mountain Properties
+    const H = peakHeight - Math.min(...mountain); // Height
+    const baseLevel = Math.min(...mountain);
+    const Wbas = end - start;
+
+    function calculateWidthAtHeight(heightPercent) {
+        const heightThreshold = baseLevel + heightPercent * H;
+        let left = start;
+        let right = end;
+
+        // Find the left boundary
+        while (left <= end && array[left] < heightThreshold) {
+            left++;
+        }
+
+        // Find the right boundary
+        while (right >= start && array[right] < heightThreshold) {
+            right--;
+        }
+
+        return right - left;
+    }
+
+    const W05 = calculateWidthAtHeight(0.5);
+    const W01 = calculateWidthAtHeight(0.1);
+    const W005 = calculateWidthAtHeight(0.05);
+
+    // Calculate Area (S) using Trapezoidal Rule
+    const S = mountain.reduce((area, value, index) => {
+        if (index === 0) return area; // No segment before the first point
+        const dx = 1; // Assuming unit spacing
+        const avgHeight = (mountain[index] + mountain[index - 1]) / 2;
+        return area + avgHeight * dx;
+    }, 0);
+
+    // Calculate A and B at 5% height
+    const height05Threshold = baseLevel + 0.05 * H;
+    const leftBoundary = findBoundaryAtHeight(array, start, peakIndex, height05Threshold, -1);
+    const rightBoundary = findBoundaryAtHeight(array, peakIndex, end, height05Threshold, 1);
+    const A = peakIndex - leftBoundary;
+    const B = rightBoundary - peakIndex;
+
+    // Calculate Factors
+    const AsymmetryFactor = B / A;
+    const TailingFactor = (A + B) / (2 * A);
+
+    // Generate HTML
+    const formulas = `
+        <div>
+            <p><strong>Asymmetry Factor (AF):</strong> AF = B / A = ${B.toFixed(2)} / ${A.toFixed(2)} = ${AsymmetryFactor.toFixed(2)}</p>
+            <p><strong>Tailing Factor (TF):</strong> TF = (A + B) / (2 * A) = (${A.toFixed(2)} + ${B.toFixed(2)}) / (2 * ${A.toFixed(2)}) = ${TailingFactor.toFixed(2)}</p>
+        </div>
+    `;
+
+    // Return Results
+    const result = {
+        H,
+        Wbas,
+        W05,
+        W01,
+        W005,
+        S,
+        A,
+        B,
+        AsymmetryFactor,
+        TailingFactor,
+        formulas
+    };
+    console.log(result);
+    return result;
+
+    // Helper Functions
+    function findPeakIndex(arr) {
+        const maxVal = Math.max(...arr);
+        const maxIndices = arr.map((val, idx) => (val === maxVal ? idx : -1)).filter(idx => idx !== -1);
+        return Math.floor((maxIndices[0] + maxIndices[maxIndices.length - 1]) / 2); // Center of plateau if peak is flat
+    }
+
+    function findBoundaryAtHeight(array, start, end, height, direction) {
+        let index = start;
+        while (index !== end && array[index] >= height) {
+            index += direction;
+        }
+        return index - direction; // Return the last valid index
+    }
+}
+
+function objectToHtml(obj) {
+    return Object.entries(obj)
+        .map(([key, value]) => `<h2>${key}: <span>${value}</span></h2>`)
+        .join('');
+}
+
 
   </script>
 

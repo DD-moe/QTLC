@@ -240,7 +240,7 @@ h2 {
       <label for="background-file">Upload Background Image:</label>
       <input type="file" id="background-file" accept="image/*">
       <label for="percentageInput">Percent of darkest pixels to detect spot:</label>
-      <input type="number" id="percentageInput" value="15" min="0" max="100">
+      <input type="number" id="percentageInput" value="15" min="0" max="255">
       <label for="constTreshold">Use constant treshold instead percental</label>
       <input type="checkbox" id="constTreshold">
     </div>
@@ -260,6 +260,10 @@ h2 {
       <input type="range" id="slider_T" min="-50" max="50" value="0" class="slider">
       <label for="chart_blurr">Chart Blurr kernel size</label>
       <input type="number" id="chart_blurr" min="1" max="10" value="5">     
+      <label for="borderTreshold">Treshold for valley detection in %</label>
+      <input type="number" id="borderTreshold" min="0" max="5" value="1">    
+      <label for="kernelValleyTreshols">Kernel for valley detection in pixels</label>
+      <input type="number" id="kernelValleyTreshols" min="1" max="5" value="3">       
     </div>
 </div>
 
@@ -277,7 +281,13 @@ h2 {
     <div id="outcome_container" class="section">
       <canvas id="preview-canvas" class="preview-canvas"></canvas>
       <canvas id="chartCanvas" class="preview-canvas"></canvas>
-      <div id="resultBox">Spot Parameters not ready yet</div>
+      <div class="section_border">
+        <div id="resultBox" class="section">Spot Parameters not ready yet</div>
+      </div>
+      <div class="section_border">
+        <h3 onclick="toggleVisibility('PeakresultBox', 'PeakresultBox_title', 'auto')" name="Peak Panel" id="PeakresultBox_title">(hide) Peak Panel</h3>
+        <div id="PeakresultBox" class="section">Peak Parameters not ready yet</div>
+      </div>
   </div>
 </div>
 
@@ -337,7 +347,10 @@ h2 {
     const previewCtx = previewCanvas.getContext('2d');
     const percentageInput = document.getElementById("percentageInput");
     const constTreshold = document.getElementById('constTreshold');
+    const borderTreshold  = document.getElementById('borderTreshold');
+    const kernelValleyTreshols = document.getElementById('kernelValleyTreshols');
     const resultBox = document.getElementById("resultBox");
+    const PeakresultBox = document.getElementById("PeakresultBox");
     const concentrationInput = document.getElementById('substance-concentration');
     const predictionBox = document.getElementById('predictionBox');
     const sharableData_paste= document.getElementById('sharableData_paste');
@@ -420,12 +433,15 @@ h2 {
       chart_blurr.value = data.chart_blurr;
       rotateRight90.checked = data.rotateRight90;
       flipHorizontally.checked = data.flipHorizontally;
+      borderTreshold.value = data.borderTreshold;
+      kernelValleyTreshols.value = data.kernelValleyTreshols;
       displayFormula(current_curve, 'formuldBox');
       toggleVisibility('model_container', 'model_container_title', data.model_container);
       toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
       toggleVisibility('outcome_container', 'outcome_container_title', data.outcome_container);
       toggleVisibility('slider_container', 'slider_container_title', data.slider_container);
       toggleVisibility('s_inputs', 'section_border_title', data.s_inputs);
+      toggleVisibility('PeakresultBox', 'PeakresultBox_title', data.PeakresultBox);
       }
       catch(error){
         console.error('Error pasting from clipboard:', error);
@@ -451,9 +467,12 @@ h2 {
         outcome_container : outcome_container.style.display,
         slider_container : slider_container.style.display,
         s_inputs : s_inputs.style.display,
+        PeakresultBox: PeakresultBox.style.display,
         chart_blurr: chart_blurr.value,
         rotateRight90: rotateRight90.checked, 
-        flipHorizontally: flipHorizontally.checked
+        flipHorizontally: flipHorizontally.checked,
+        borderTreshold: borderTreshold.value,
+        kernelValleyTreshols: kernelValleyTreshols.value
       }
       await navigator.clipboard.writeText(JSON.stringify(data));
     }
@@ -557,12 +576,12 @@ function loadImageToCanvas(input, canvas, rotateRight90, flipHorizontally) {
       // data for chart
       const columnSums = calculateColumnSums(detectedSpotImage);
       const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
-      const { startMountain, endMountain } = findMountainRange(blurredData, 3);
+      const { startMountain, endMountain } = findMountainRange(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
       //console.log(startMountain, endMountain, blurredData.length - 1);
       const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
-      console.log(PeakMetrices);
       PeakhtmlString = objectToHtml(PeakMetrices);
       drawLineChart(blurredData, "chartCanvas");
+      drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
       // data for chart
       previewCtx.putImageData(detectedSpotImage, 0, 0);
       const {sum, average, pixelCount, average_color} = calculateSum(detectedSpotImage);
@@ -570,8 +589,8 @@ function loadImageToCanvas(input, canvas, rotateRight90, flipHorizontally) {
       resultBox.innerHTML = `<h2>average spot intensity:   <span>${average}</span></h2>
       <h2>sum of pixels:   <span>${current_sum}</span></h2>
       <h2>spot area:   <span>${pixelCount}</span></h2>
-      <h2>average pixel intensity:   <span>${average_color}</span></h2>
-      ${PeakhtmlString}`;
+      <h2>average pixel intensity:   <span>${average_color}</span></h2>`;
+      PeakresultBox.innerHTML = PeakhtmlString;
       if (Object.keys(current_curve).length !== 0) {
         predictConcentration();
       }
@@ -930,53 +949,104 @@ function invertArrayValues(arr, maskZeros = false) {
     return arr.map(value => (value === 0 && maskZeros) ? 0 : max - (value - min));
 }
 
-function findMountainRange(array, maxNeighbours) {
-    const midPoint = Math.floor(array.length / 2);
+function findMountainRange(array, maxNeighbours, threshold) {
+    const midpoint = Math.floor(array.length / 2);
+    let leftValleys = [];
+    let rightValleys = [];
 
-    function findValley(direction) {
-        let currentIndex = midPoint;
-        let neighboursToCheck = 1;
-
-        while (neighboursToCheck <= maxNeighbours) {
-            const leftIndex = currentIndex - neighboursToCheck * direction;
-            const rightIndex = currentIndex + neighboursToCheck * direction;
-
-            // Ensure indices are within bounds
-            const leftValue = leftIndex >= 0 ? array[leftIndex] : Infinity;
-            const rightValue = rightIndex < array.length ? array[rightIndex] : Infinity;
-
-            const currentValue = array[currentIndex];
-
-            if (leftValue > currentValue && rightValue > currentValue) {
-                // Valley found
-                return currentIndex;
+    const getNeighbours = (index, direction) => {
+        let neighbours = [];
+        for (let i = 1; i <= maxNeighbours; i++) {
+            let neighbourIndex = index + i * direction;
+            if (neighbourIndex >= 0 && neighbourIndex < array.length) {
+                neighbours.push(array[neighbourIndex]);
             }
+        }
+        return neighbours;
+    };
 
-            if (leftValue === currentValue || rightValue === currentValue) {
-                // Plateau detected, expand neighbour check
-                neighboursToCheck++;
+    // Check if there are any elements with value 0
+    const hasZero = array.includes(0);
+
+    if (hasZero) {
+        // If the midpoint is 0, set range to the entire array
+        if (array[midpoint] === 0) {
+            return { startMountain: 0, endMountain: array.length - 1 };
+        }
+
+        // Otherwise, find the last non-zero element to the left and right of the midpoint
+        let startMountain = 0;
+        let endMountain = array.length - 1;
+
+        for (let i = midpoint; i >= 0; i--) {
+            if (array[i] !== 0) {
+                startMountain = i;
             } else {
-                // No valley found in this expansion, try further
-                currentIndex += direction;
+                break;
             }
         }
 
-        // No valley found within the allowed neighbours
-        return { startMountain: 0, endMountain: array.length - 1 };
+        for (let i = midpoint; i < array.length; i++) {
+            if (array[i] !== 0) {
+                endMountain = i;
+            } else {
+                break;
+            }
+        }
+
+        return { startMountain, endMountain };
     }
 
-    const start = findValley(-1); // Look left for start of the mountain
-    const end = findValley(1);   // Look right for end of the mountain
+    // No elements with value 0; continue with finding valleys
+    for (let i = 0; i < array.length; i++) {
+        const leftNeighbours = getNeighbours(i, -1);
+        const rightNeighbours = getNeighbours(i, 1);
 
-    if (start !== null && end !== null) {
-        return { startMountain : start, endMountain: end };
+        const leftAvg = leftNeighbours.length
+            ? leftNeighbours.reduce((a, b) => a + b, 0) / leftNeighbours.length
+            : null;
+
+        const rightAvg = rightNeighbours.length
+            ? rightNeighbours.reduce((a, b) => a + b, 0) / rightNeighbours.length
+            : null;
+
+        const element = array[i];
+        const avgLeft = leftAvg !== null ? leftAvg : rightAvg;
+        const avgRight = rightAvg !== null ? rightAvg : leftAvg;
+
+        if (
+            avgLeft !== null &&
+            avgRight !== null &&
+            avgLeft > element * (1 + threshold / 100) &&
+            avgRight > element * (1 + threshold / 100)
+        ) {
+            if (i < midpoint) {
+                leftValleys.push(i);
+            } else {
+                rightValleys.push(i);
+            }
+        }
+    }
+
+    let startMountain, endMountain;
+
+    if (leftValleys.length === 0) {
+        startMountain = 0;
     } else {
-        throw new Error("Mountain start or end could not be determined within given constraints.");
+        startMountain = leftValleys[leftValleys.length - 1];
     }
+
+    if (rightValleys.length === 0) {
+        endMountain = array.length - 1;
+    } else {
+        endMountain = rightValleys[0];
+    }
+
+    return { startMountain, endMountain };
 }
 
+
 function calculateMountainMetrics(array, start, end) {
-  //console.log(array, start, end);
     const mountain = array.slice(start, end + 1);
     const peakIndex = findPeakIndex(mountain) + start; // Adjust to original array index
     const peakHeight = array[peakIndex];
@@ -1049,7 +1119,6 @@ function calculateMountainMetrics(array, start, end) {
         TailingFactor,
         formulas
     };
-    console.log(result);
     return result;
 
     // Helper Functions
@@ -1072,6 +1141,41 @@ function objectToHtml(obj) {
     return Object.entries(obj)
         .map(([key, value]) => `<h2>${key}: <span>${value}</span></h2>`)
         .join('');
+}
+
+function drawVerticalLines(canvasId, startMountain, endMountain, dataLength) {
+    // Get the canvas element and its context
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !(canvas instanceof HTMLCanvasElement)) {
+        console.error("Invalid canvas ID or element not found.");
+        return;
+    }
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+        console.error("Unable to get canvas context.");
+        return;
+    }
+
+    // Calculate canvas positions for the lines
+    const startX = (startMountain / dataLength) * canvas.width;
+    const endX = (endMountain / dataLength) * canvas.width;
+
+    // Set the line color and width
+    ctx.strokeStyle = "green";
+    ctx.lineWidth = 3;
+
+    // Draw the first vertical line
+    ctx.beginPath();
+    ctx.moveTo(startX, 0);        // Start at the top of the canvas
+    ctx.lineTo(startX, canvas.height); // End at the bottom of the canvas
+    ctx.stroke();
+
+    // Draw the second vertical line
+    ctx.beginPath();
+    ctx.moveTo(endX, 0);         // Start at the top of the canvas
+    ctx.lineTo(endX, canvas.height); // End at the bottom of the canvas
+    ctx.stroke();
 }
 
 

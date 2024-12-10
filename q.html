@@ -296,6 +296,8 @@ h2 {
 <div class="section_border">
   <h3 onclick="toggleVisibility('curve_container', 'curve_container_title', 'auto')" name="Curve Panel" id="curve_container_title">(hide) Curve Panel</h3> 
   <div id="curve_container" class="section">
+    <label for="useAUC">Use AUC instead of total spot pixels sum</label>
+    <input type="checkbox" id="useAUC">    
     <label for="substance-concentration">Substance Concentration:</label>
     <input type="number" id="substance-concentration">
     <div id="buttonContainer">
@@ -351,6 +353,7 @@ h2 {
     const kernelValleyTreshols = document.getElementById('kernelValleyTreshols');
     const resultBox = document.getElementById("resultBox");
     const PeakresultBox = document.getElementById("PeakresultBox");
+    const useAUC = document.getElementById("useAUC");
     const concentrationInput = document.getElementById('substance-concentration');
     const predictionBox = document.getElementById('predictionBox');
     const sharableData_paste= document.getElementById('sharableData_paste');
@@ -435,6 +438,7 @@ h2 {
       flipHorizontally.checked = data.flipHorizontally;
       borderTreshold.value = data.borderTreshold;
       kernelValleyTreshols.value = data.kernelValleyTreshols;
+      useAUC.checked = data.useAUC;
       displayFormula(current_curve, 'formuldBox');
       toggleVisibility('model_container', 'model_container_title', data.model_container);
       toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
@@ -472,7 +476,8 @@ h2 {
         rotateRight90: rotateRight90.checked, 
         flipHorizontally: flipHorizontally.checked,
         borderTreshold: borderTreshold.value,
-        kernelValleyTreshols: kernelValleyTreshols.value
+        kernelValleyTreshols: kernelValleyTreshols.value,
+        useAUC: useAUC.checked
       }
       await navigator.clipboard.writeText(JSON.stringify(data));
     }
@@ -585,9 +590,10 @@ function loadImageToCanvas(input, canvas, rotateRight90, flipHorizontally) {
       // data for chart
       previewCtx.putImageData(detectedSpotImage, 0, 0);
       const {sum, average, pixelCount, average_color} = calculateSum(detectedSpotImage);
-      current_sum = sum;
+      current_sum = useAUC.checked ? PeakMetrices.S : sum;
+
       resultBox.innerHTML = `<h2>average spot intensity:   <span>${average}</span></h2>
-      <h2>sum of pixels:   <span>${current_sum}</span></h2>
+      <h2>sum of pixels:   <span>${sum}</span></h2>
       <h2>spot area:   <span>${pixelCount}</span></h2>
       <h2>average pixel intensity:   <span>${average_color}</span></h2>`;
       PeakresultBox.innerHTML = PeakhtmlString;

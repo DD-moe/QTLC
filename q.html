@@ -42,6 +42,21 @@ input {
   text-align: center;
 }
 
+/* Textarea Styling */
+textarea {
+  margin: 0.4em 0;
+  padding: 0.2em;
+  font-size: 1.5em;
+  border: 1px solid blueviolet;
+  background-color: #d4c8d8;
+  border-radius: 4px;
+  width: 100%;
+  max-width: 400px;
+  text-align: left;
+  resize: vertical; /* Allow vertical resizing */
+  height: 100px; /* Default height */
+}
+
 /* Canvas Elements */
 #loadingCanvasContainer {
   display: none;
@@ -148,6 +163,15 @@ span {
   color: #26173d;
   font-size: 1.1em;
   text-align: left;
+}
+
+em {
+  font-style: italic;
+  color: #26173d;
+  font-size: 0.7em;
+  margin-left: 0.5em;
+  display: block;
+  text-align: center;
 }
 
 /* Headings */
@@ -336,7 +360,14 @@ h2 {
     <label for="substanceName">Substance name</label>
     <input type="text" id="substanceName">
     <label for="modelComment">model description</label>
-    <input type="text" id="modelComment">
+    <textarea id="modelComment"></textarea>
+<!-- color inputs /--> 
+<label for="redFactor">Red channel multiplyer</label>
+<input type="number" id="redFactor" min="0" max="1" value="0.2126" step="0.0001">     
+<label for="greenFactor">Green channel multiplyer</label>
+<input type="number" id="greenFactor" min="0" max="1" value="0.7152" step="0.0001">    
+<label for="blueFactor">Blue channel multiplyer</label>
+<input type="number" id="blueFactor" min="0" max="1" value="0.0722" step="0.0001">    
   </div>
 </div>
 
@@ -387,6 +418,9 @@ h2 {
     const outcome_container = document.getElementById('outcome_container');
     const slider_container = document.getElementById('slider_container');
     const s_inputs = document.getElementById('s_inputs');
+    const redFactor = document.getElementById('redFactor');
+    const greenFactor = document.getElementById('greenFactor');
+    const blueFactor = document.getElementById('blueFactor');
 
     let current_sum = 0;
     const measurements = []; // 2D array for storing data
@@ -459,6 +493,9 @@ h2 {
       kernelValleyTreshols.value = data.kernelValleyTreshols;
       useAUC.checked = data.useAUC;
       showLoaded.checked = data.showLoaded;
+      redFactor.value = data.redFactor;
+      greenFactor.value = data.greenFactor;
+      blueFactor.value = data.blueFactor;
       displayFormula(current_curve, 'formuldBox');
       toggleVisibility('model_container', 'model_container_title', data.model_container);
       toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
@@ -498,7 +535,10 @@ h2 {
         borderTreshold: borderTreshold.value,
         kernelValleyTreshols: kernelValleyTreshols.value,
         useAUC: useAUC.checked,
-        showLoaded : showLoaded.checked 
+        showLoaded : showLoaded.checked,
+        redFactor : redFactor.value,
+        greenFactor : greenFactor.value,
+        blueFactor : blueFactor.value
       }
       await navigator.clipboard.writeText(JSON.stringify(data));
     }
@@ -663,6 +703,10 @@ Array.from(files).forEach((file, index) => {
       const dataWidth = dataCanvas.width;
       const dataHeight = dataCanvas.height;
 
+      const r = parseFloat(redFactor.value);
+      const g = parseFloat(blueFactor.value);
+      const b = parseFloat(blueFactor.value);
+
       if (dataWidth === 0 || dataHeight === 0) {
         alert('Please upload a data image first.');
         return;
@@ -681,7 +725,7 @@ Array.from(files).forEach((file, index) => {
       previewCanvas.height = boxSize_Y;
       // get image data prepared to normalzation
       const imageData = dataCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
-      const grayData = toGrayscale(imageData, 0.2, 0.7, 0.1);
+      const grayData = toGrayscale(imageData, r, g, b);
       previewCtx.putImageData(grayData, 0, 0);
       previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
       previewCtx.drawImage(previewCanvas, 0, 0);   
@@ -689,7 +733,7 @@ Array.from(files).forEach((file, index) => {
       const readyData = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
       // get image data prepared to normalzation
       const bcgData = bcgCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
-      const grayBcg = toGrayscale(bcgData, 0.2, 0.7, 0.1);
+      const grayBcg = toGrayscale(bcgData, r, g, b);
       previewCtx.putImageData(grayBcg, 0, 0);
       previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
       previewCtx.drawImage(previewCanvas, 0, 0);   
@@ -1216,22 +1260,29 @@ function calculateMountainMetrics(array, start, end) {
 
     // Calculate A and B at 5% height
     const height05Threshold = baseLevel + 0.05 * H;
-    const leftBoundary = findBoundaryAtHeight(array, start, peakIndex, height05Threshold, -1);
-    const rightBoundary = findBoundaryAtHeight(array, peakIndex, end, height05Threshold, 1);
-    const A = peakIndex - leftBoundary;
-    const B = rightBoundary - peakIndex;
+    const height10Threshold = baseLevel + 0.10 * H;
+    const leftBoundary05 = findBoundaryAtHeight(array, start, peakIndex, height05Threshold, -1);
+    const rightBoundary05 = findBoundaryAtHeight(array, peakIndex, end, height05Threshold, 1);
+    const leftBoundary10 = findBoundaryAtHeight(array, start, peakIndex, height10Threshold, -1);
+    const rightBoundary10 = findBoundaryAtHeight(array, peakIndex, end, height10Threshold, 1);    
+    const A05 = peakIndex - leftBoundary05;
+    const B05 = rightBoundary05 - peakIndex;
+    const A10 = peakIndex - leftBoundary10;
+    const B10 = rightBoundary10 - peakIndex;    
 
     // Calculate Factors
-    const AsymmetryFactor = B / A;
-    const TailingFactor = (A + B) / (2 * A);
+    const AsymmetryFactor = B10 / A10; // at 10% of height
+    const TailingFactor = (A05 + B05) / (2 * A05); // at 5 % of height
 
     // Generate HTML
     const formulas = `
-        <div>
-            <p><strong>Asymmetry Factor (AF):</strong> AF = B / A = ${B.toFixed(2)} / ${A.toFixed(2)} = ${AsymmetryFactor.toFixed(2)}</p>
-            <p><strong>Tailing Factor (TF):</strong> TF = (A + B) / (2 * A) = (${A.toFixed(2)} + ${B.toFixed(2)}) / (2 * ${A.toFixed(2)}) = ${TailingFactor.toFixed(2)}</p>
-        </div>
-    `;
+    <div>
+        <p><strong>Asymmetry Factor (AF):</strong> AF = B / A = ${B10.toFixed(2)} / ${A10.toFixed(2)} = ${AsymmetryFactor.toFixed(2)}</p>
+        <p><em>A and B are measured at 10% of the peak height.</em></p>
+        <p><strong>Tailing Factor (TF):</strong> TF = (A + B) / (2 * A) = (${A05.toFixed(2)} + ${B05.toFixed(2)}) / (2 * ${A05.toFixed(2)}) = ${TailingFactor.toFixed(2)}</p>
+        <p><em>A and B are measured at 5% of the peak height.</em></p>
+    </div>
+`;
 
     // Return Results
     const result = {
@@ -1241,8 +1292,10 @@ function calculateMountainMetrics(array, start, end) {
         W01,
         W005,
         S,
-        A,
-        B,
+        A05,
+        B05,
+        A10,
+        B10,        
         AsymmetryFactor,
         TailingFactor,
         formulas

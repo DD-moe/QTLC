@@ -29,6 +29,36 @@ br {
     display: block; /* Ensures it still acts as a block-level element */
   }
 
+  #modelListContainer {  /* Container for the list */
+    max-height: 20vh; /* Maximum height of the container (20% of viewport height) */
+    border: 1px solid #ccc;
+    overflow-y: auto; /* Enable vertical scrolling */
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    width: 80%;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0; /* Reset default ul margins */
+}
+
+li {
+    cursor: pointer;
+    padding: 0.5rem;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s ease; /* Smooth hover transition */
+}
+
+li:hover {
+    background-color: #f5f5f5; /* Slightly lighter background on hover */
+}
+
+li:last-child { /*Remove border from last element*/
+    border-bottom: none;
+}
+
 /* Input Fields */
 input {
   margin: 0.4em 0;
@@ -359,6 +389,8 @@ h2 {
     <button id="sharableData_copy">Copy model data</button>
     <label for="substanceName">Substance name</label>
     <input type="text" id="substanceName">
+    <label for="modelName">Model Name:</label>
+    <input type="text" id="modelName">    
     <label for="modelComment">model description</label>
     <textarea id="modelComment"></textarea>
 <!-- color inputs /--> 
@@ -368,6 +400,16 @@ h2 {
 <input type="number" id="greenFactor" min="0" max="1" value="0.7152" step="0.0001">    
 <label for="blueFactor">Blue channel multiplyer</label>
 <input type="number" id="blueFactor" min="0" max="1" value="0.0722" step="0.0001">    
+<!-- moddels panel -->
+<button id="saveModel">Save Model</button>
+<input type="text" id="modelSearch" placeholder="Search models...">
+<div id="modelListContainer">
+  <ul id="modelList"></ul>
+</div>
+<button id="copyAllModels">Copy All Models</button>
+<button id="pasteAllModels">Paste All Models</button>
+    <button id="deleteModel">Delete Model</button>
+    <button id="applyModel">Apply Model</button>
   </div>
 </div>
 
@@ -421,12 +463,22 @@ h2 {
     const redFactor = document.getElementById('redFactor');
     const greenFactor = document.getElementById('greenFactor');
     const blueFactor = document.getElementById('blueFactor');
+    // models management:
+    const modelNameInput = document.getElementById('modelName');
+    const saveButton = document.getElementById('saveModel');
+    const modelList = document.getElementById('modelList');
+    const modelSearch = document.getElementById('modelSearch');
+    const copyAllButton = document.getElementById('copyAllModels');
+    const pasteAllButton = document.getElementById('pasteAllModels');
+    const deleteButton = document.getElementById('deleteModel');
+    const applyButton = document.getElementById('applyModel'); // Get the new button
+    const MODEL_PREFIX = 'model_'; // Prefix for model keys
 
     let current_sum = 0;
     const measurements = []; // 2D array for storing data
     current_curve = {}; // object to store linear reggression formula
 
-    sharableData_paste.addEventListener("click",  setSharableData);
+    sharableData_paste.addEventListener("click",  () => {setSharableData(true)});
     sharableData_copy.addEventListener("click",  getSharableData);
 
     function toggleVisibility(ID, tittle_ID, mode) {
@@ -468,10 +520,17 @@ h2 {
     });    
 
     // Update slider value display
-    async function setSharableData(){
+    async function setSharableData(clipboard){
       try {
-      const clipboardText = await navigator.clipboard.readText();
-      const data = JSON.parse(clipboardText);
+        let data = undefined;
+        if (clipboard === true) {
+          const clipboardText = await navigator.clipboard.readText();
+          data = JSON.parse(clipboardText);
+        }
+        else{
+          data = JSON.parse(clipboard);
+        }
+
       current_curve = data.current_curve;
       resolutionRatio.value = data.resolutionRatio;
       modelComment.value = data.modelComment;
@@ -510,7 +569,7 @@ h2 {
       }
     }
 
-    async function getSharableData() {
+    async function getSharableData(clipboard = false) {
       try {
       const data = {
         current_curve : current_curve,
@@ -540,13 +599,17 @@ h2 {
         greenFactor : greenFactor.value,
         blueFactor : blueFactor.value
       }
-      await navigator.clipboard.writeText(JSON.stringify(data));
+      const textData = JSON.stringify(data);
+      if (clipboard) {
+        await navigator.clipboard.writeText(textData);
+      }
+      return textData;
     }
     catch (error) {
       console.error('Error copying to clipboard:', error);
       alert('Failed to copy to clipboard');
     }
-    }
+  }
 
     function loadImageToCanvas(input, canvas, rotateRight90, flipHorizontally) {
   input.style.color = "black";
@@ -1358,6 +1421,117 @@ function drawVerticalLines(canvasId, startMountain, endMountain, dataLength) {
     ctx.lineTo(endX, canvas.height); // End at the bottom of the canvas
     ctx.stroke();
 }
+
+// model management
+function updateModelList() {
+    modelList.innerHTML = '';
+    const searchTerm = modelSearch.value.toLowerCase();
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith(MODEL_PREFIX) && key.toLowerCase().includes(searchTerm)) {
+            const li = document.createElement('li');
+            li.textContent = key.substring(MODEL_PREFIX.length); // Display without prefix
+            li.addEventListener('click', () => {
+                modelNameInput.value = key.substring(MODEL_PREFIX.length);
+            });
+            modelList.appendChild(li);
+        }
+    }
+}
+
+saveButton.addEventListener('click', async () => {
+    const modelName = modelNameInput.value;
+    if (!modelName) {
+        alert("Please enter a model name.");
+        return;
+    }
+
+    const prefixedModelName = MODEL_PREFIX + modelName; // Add prefix
+
+    if (localStorage.getItem(prefixedModelName)) {
+        if (!confirm("Model with this name already exists. Do you want to overwrite it?")) {
+            return;
+        }
+    }
+
+    try {
+        const modelData = await getSharableData();
+        localStorage.setItem(prefixedModelName, JSON.stringify(modelData));
+        updateModelList();
+        modelNameInput.value = "";
+        alert("Model saved!");
+    } catch (error) {
+        console.error("Error saving model:", error);
+        alert("An error occurred while saving the model.");
+    }
+});
+
+modelSearch.addEventListener('input', updateModelList);
+
+window.addEventListener('storage', updateModelList);
+
+copyAllButton.addEventListener('click', () => {
+    const allModels = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith(MODEL_PREFIX)) {
+            allModels[key.substring(MODEL_PREFIX.length)] = JSON.parse(localStorage.getItem(key)); // Save without prefix in json
+        }
+    }
+    navigator.clipboard.writeText(JSON.stringify(allModels)).then(() => {
+        alert('All models data copied to clipboard!');
+    });
+});
+
+pasteAllButton.addEventListener('click', () => {
+    navigator.clipboard.readText().then(text => {
+        try {
+            const parsedModels = JSON.parse(text);
+            for (const modelName in parsedModels) {
+                localStorage.setItem(MODEL_PREFIX + modelName, JSON.stringify(parsedModels[modelName])); // Save with prefix in localstorage
+            }
+            updateModelList();
+            alert('Models data pasted from clipboard!');
+        } catch (error) {
+            alert('Invalid data in clipboard. Please copy valid JSON model data.');
+        }
+    });
+});
+
+deleteButton.addEventListener('click', () => {
+    const modelToDelete = modelNameInput.value;
+    if (modelToDelete && confirm(`Are you sure you want to delete model "${modelToDelete}"?`)) {
+        localStorage.removeItem(MODEL_PREFIX + modelToDelete); // Remove with prefix
+        updateModelList();
+        modelNameInput.value = "";
+    }
+});
+
+
+applyButton.addEventListener('click', () => { // Event listener for apply button
+    const modelName = modelNameInput.value;
+    if (!modelName) {
+        alert("Please select a model to apply.");
+        return;
+    }
+
+    const prefixedModelName = MODEL_PREFIX + modelName;
+    const storedModel = localStorage.getItem(prefixedModelName);
+
+    if (storedModel) {
+        try {
+            const modelData = JSON.parse(storedModel);
+            setSharableData(modelData); // Call the apply function
+        } catch (error) {
+            console.error("Error parsing model data:", error);
+            alert("Error loading model data.");
+        }
+    } else {
+        alert("Model not found.");
+    }
+});
+
+updateModelList();
 
 
   </script>

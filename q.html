@@ -92,6 +92,10 @@ textarea {
   display: none;
 }
 
+#raportCanvas{
+  display: none;
+}
+
 #background-canvas, #data-canvas{
   max-width: 100%;
   height: auto;
@@ -284,6 +288,15 @@ h2 {
       width: 100%;
     }
 
+    #report-content {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            max-height: 40%; 
+            width: 90%;
+            overflow-y: auto;
+        }
+
   </style>
 </head>
 <body>
@@ -413,6 +426,24 @@ h2 {
   </div>
 </div>
 
+<div class="section_border">
+  <h3 onclick="toggleVisibility('raport_container', 'raport_container_title', 'auto')" name="Raport Panel" id="raport_container_title">(hide) Raport Panel</h3> 
+  <div id="raport_container" class="section">
+    <label for="RaportName">Raport file name</label>
+    <input type="text" id="RaportName"> 
+    <button id="recordButton">Start Recording Report</button>
+    <button id="clearButton">Clear Report</button>
+    <button id="savePdfButton">Save as PDF</button>
+    <button id="shareButton">Share PDF</button>
+    <div id="report-content"></div>
+    <canvas id="raportCanvas"></canvas>
+  </div>
+</div>
+
+<!-- other scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- other scripts -->
+
   <script>
     // inputs
     const dataInput = document.getElementById('data-file');
@@ -473,6 +504,17 @@ h2 {
     const deleteButton = document.getElementById('deleteModel');
     const applyButton = document.getElementById('applyModel'); // Get the new button
     const MODEL_PREFIX = 'model_'; // Prefix for model keys
+    // raport management
+    let isRecording = false;
+    const raportColor = '#ccd4e3';
+    let reportContent = document.getElementById('report-content');
+    const recordButton = document.getElementById('recordButton');
+    const clearButton = document.getElementById('clearButton');
+    const savePdfButton = document.getElementById('savePdfButton');
+    const shareButton = document.getElementById('shareButton'); 
+    const RaportName = document.getElementById('RaportName'); 
+    const raportCanvas = document.getElementById('raportCanvas'); 
+    let reportData = [];
 
     let current_sum = 0;
     const measurements = []; // 2D array for storing data
@@ -555,6 +597,7 @@ h2 {
       redFactor.value = data.redFactor;
       greenFactor.value = data.greenFactor;
       blueFactor.value = data.blueFactor;
+      RaportName.value = data.RaportName;
       displayFormula(current_curve, 'formuldBox');
       toggleVisibility('model_container', 'model_container_title', data.model_container);
       toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
@@ -562,6 +605,7 @@ h2 {
       toggleVisibility('slider_container', 'slider_container_title', data.slider_container);
       toggleVisibility('s_inputs', 'section_border_title', data.s_inputs);
       toggleVisibility('PeakresultBox', 'PeakresultBox_title', data.PeakresultBox);
+      toggleVisibility('raport_container', 'raport_container_title', data.raport_container);
       }
       catch(error){
         console.error('Error pasting from clipboard:', error);
@@ -588,6 +632,7 @@ h2 {
         slider_container : slider_container.style.display,
         s_inputs : s_inputs.style.display,
         PeakresultBox: PeakresultBox.style.display,
+        raport_container: raport_container.style.display,
         chart_blurr: chart_blurr.value,
         rotateRight90: rotateRight90.checked, 
         flipHorizontally: flipHorizontally.checked,
@@ -597,7 +642,8 @@ h2 {
         showLoaded : showLoaded.checked,
         redFactor : redFactor.value,
         greenFactor : greenFactor.value,
-        blueFactor : blueFactor.value
+        blueFactor : blueFactor.value,
+        RaportName : RaportName.value
       }
       const textData = JSON.stringify(data);
       if (clipboard) {
@@ -759,6 +805,8 @@ Array.from(files).forEach((file, index) => {
 
     // Process button action
     processButton.addEventListener('click', () => {
+      ReportaddText('New measurement was attempted');
+
       const boxSize_X = parseInt(slider_X.value, 10);
       const boxSize_Y = parseInt(slider_Y.value, 10);
       const boxShiftLeft = parseInt(slider_L.value);
@@ -788,6 +836,8 @@ Array.from(files).forEach((file, index) => {
       previewCanvas.height = boxSize_Y;
       // get image data prepared to normalzation
       const imageData = dataCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
+      // raport image:
+      ReportaddImage(imageData, format = 'png');
       const grayData = toGrayscale(imageData, r, g, b);
       previewCtx.putImageData(grayData, 0, 0);
       previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
@@ -796,6 +846,8 @@ Array.from(files).forEach((file, index) => {
       const readyData = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
       // get image data prepared to normalzation
       const bcgData = bcgCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
+      // raport image:
+      ReportaddImage(bcgData, format = 'png');      
       const grayBcg = toGrayscale(bcgData, r, g, b);
       previewCtx.putImageData(grayBcg, 0, 0);
       previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
@@ -813,6 +865,8 @@ Array.from(files).forEach((file, index) => {
       const { startMountain, endMountain } = findMountainRange(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
       //console.log(startMountain, endMountain, blurredData.length - 1);
       const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
+      // report metrices od peak in table
+      ReportaddTable(PeakMetrices, 'Parameter', 'value');
       PeakhtmlString = objectToHtml(PeakMetrices);
       drawLineChart(blurredData, "chartCanvas");
       drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
@@ -1533,6 +1587,139 @@ applyButton.addEventListener('click', () => { // Event listener for apply button
 
 updateModelList();
 
+
+// raport code:
+recordButton.addEventListener('click', () => {
+    isRecording = !isRecording;
+    recordButton.textContent = isRecording ? 'Stop Recording Report' : 'Start Recording Report';
+    document.body.style.backgroundColor = isRecording ? 'Khaki' : raportColor;
+});
+
+clearButton.addEventListener('click', () => {
+    reportContent.innerHTML = '';
+    reportData = [];
+    document.body.style.backgroundColor = raportColor;
+});
+
+function ReportaddText(text) {
+    if (isRecording) {
+        let p = document.createElement('p');
+        p.textContent = text;
+        reportContent.appendChild(p);
+        reportData.push({ type: 'text', content: text});
+    }
+}
+
+function ReportaddImage(imageData, format = 'png') {
+    if (isRecording) {
+      const ctx = raportCanvas.getContext('2d');
+      raportCanvas.width = imageData.width;
+      raportCanvas.height = imageData.height;
+
+      ctx.putImageData(imageData, 0, 0);
+
+      let imageUrl;
+      if (format.toLowerCase() === 'jpeg' || format.toLowerCase() === 'jpg') {
+          imageUrl = raportCanvas.toDataURL('image/jpeg', 0.8); // Adjust quality (0-1) as needed
+      } else if(format.toLowerCase() === 'png'){
+          imageUrl = raportCanvas.toDataURL(`image/png`); // Use specified format (default png)
+      }
+
+      let img = document.createElement('img');
+      img.src = imageUrl;
+      reportContent.appendChild(img);
+
+      reportData.push({ type: 'image', content: imageUrl, format }); // Store the data URL
+
+    }
+}
+
+function ReportaddTable(data, column_1_header, column_2_header) {
+    if (isRecording) {
+        let table = document.createElement('table');
+        let headerRow = table.insertRow();
+
+        const th1 = document.createElement('th');
+        th1.textContent = column_1_header;
+        headerRow.appendChild(th1);
+
+        const th2 = document.createElement('th');
+        th2.textContent = column_2_header;
+        headerRow.appendChild(th2);
+
+        // Use Object.entries to get key-value pairs
+        for (const [key, value] of Object.entries(data)) {
+          let row = table.insertRow(); // Create a single row
+            let td1 = document.createElement('td');
+            td1.textContent = key; // Display the value
+            row.appendChild(td1);
+            let td2 = document.createElement('td');
+            td2.textContent = value; // Display the value
+            row.appendChild(td2);
+        }
+
+        reportContent.appendChild(table);
+        reportData.push({ type: 'table', content: data });
+    }
+}
+
+async function make_pdf(mode){
+  const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    let y = 10;
+    reportData.forEach(item => {
+        if (item.type === 'text') {
+            pdf.text(item.content, 10, y);
+            y += 10; // Adjust spacing as needed
+        } else if (item.type === 'image') {
+            pdf.addImage(item.content, item.format.toUpperCase(), 10, y, 50, 50);
+            y += 60; // Adjust spacing after image
+        } else if (item.type === 'table') {
+            // Basic table rendering in PDF. For complex tables, consider a dedicated library.
+            let tableY = y;
+            item.content.forEach((row, rowIndex) => {
+                let x = 10;
+                Object.values(row).forEach(cell => {
+                    pdf.text(cell.toString(), x, tableY);
+                    x += 30; // Adjust column width as needed
+                });
+                tableY += 10;
+            });
+            y = tableY + 10;
+        }
+    });
+
+    if (mode === 'save') {
+      pdf.save(`${RaportName.value}.report.pdf`);
+    } else if (mode === 'share') {
+      const pdfBytes = pdf.output('arraybuffer');
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const file = new File([blob], RaportName.value.length > 0 ? `${RaportName.value}.report.pdf` : 'Report.pdf', { type: 'application/pdf' });
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: RaportName.value.length > 0 ? `${RaportName.value} Report` : 'QTLC Report',
+                files: [file],
+            });
+            console.log('Shared successfully');
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    } else {
+        alert('Web Share API is not supported in this browser.');
+    }      
+    }
+}
+
+savePdfButton.addEventListener('click', () => {
+  make_pdf('save');
+});
+
+shareButton.addEventListener('click', async () => {
+  make_pdf('share');
+});
 
   </script>
 

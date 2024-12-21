@@ -289,13 +289,19 @@ h2 {
     }
 
     #report-content {
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-top: 10px;
-            max-height: 40%; 
-            width: 90%;
-            overflow-y: auto;
-        }
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-top: 10px;
+    max-height: 40%; 
+    width: 90%;
+    overflow-y: auto;
+
+    /* Scaling adjustments for A4 compatibility */
+    font-size: 12px;
+    line-height: 1.5;
+    box-sizing: border-box; /* Ensure padding is included in dimensions */
+}
+
 
   </style>
 </head>
@@ -442,6 +448,7 @@ h2 {
 
 <!-- other scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <!-- other scripts -->
 
   <script>
@@ -514,7 +521,6 @@ h2 {
     const shareButton = document.getElementById('shareButton'); 
     const RaportName = document.getElementById('RaportName'); 
     const raportCanvas = document.getElementById('raportCanvas'); 
-    let reportData = [];
 
     let current_sum = 0;
     const measurements = []; // 2D array for storing data
@@ -1606,7 +1612,6 @@ function ReportaddText(text) {
         let p = document.createElement('p');
         p.textContent = text;
         reportContent.appendChild(p);
-        reportData.push({ type: 'text', content: text});
     }
 }
 
@@ -1628,9 +1633,6 @@ function ReportaddImage(imageData, format = 'png') {
       let img = document.createElement('img');
       img.src = imageUrl;
       reportContent.appendChild(img);
-
-      reportData.push({ type: 'image', content: imageUrl, format }); // Store the data URL
-
     }
 }
 
@@ -1659,66 +1661,70 @@ function ReportaddTable(data, column_1_header, column_2_header) {
         }
 
         reportContent.appendChild(table);
-        reportData.push({ type: 'table', content: data });
     }
 }
 
-async function make_pdf(mode){
-  const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
+async function generatePDF(mode) {
+    const { jsPDF } = window.jspdf;
 
-    let y = 10;
-    reportData.forEach(item => {
-        if (item.type === 'text') {
-            pdf.text(item.content, 10, y);
-            y += 10; // Adjust spacing as needed
-        } else if (item.type === 'image') {
-            pdf.addImage(item.content, item.format.toUpperCase(), 10, y, 50, 50);
-            y += 60; // Adjust spacing after image
-        } else if (item.type === 'table') {
-            // Basic table rendering in PDF. For complex tables, consider a dedicated library.
-            let tableY = y;
-            item.content.forEach((row, rowIndex) => {
-                let x = 10;
-                Object.values(row).forEach(cell => {
-                    pdf.text(cell.toString(), x, tableY);
-                    x += 30; // Adjust column width as needed
-                });
-                tableY += 10;
-            });
-            y = tableY + 10;
-        }
+    if (!jsPDF) {
+        console.error("jsPDF is not defined. Ensure you have included the jsPDF library.");
+        return;
+    }
+
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm', // A4 dimensions in millimeters
+        format: 'a4',
     });
 
-    if (mode === 'save') {
-      pdf.save(`${RaportName.value}.report.pdf`);
-    } else if (mode === 'share') {
-      const pdfBytes = pdf.output('arraybuffer');
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const file = new File([blob], RaportName.value.length > 0 ? `${RaportName.value}.report.pdf` : 'Report.pdf', { type: 'application/pdf' });
+    const pdfWidth = 210; // A4 width in mm
+    const pdfHeight = 297; // A4 height in mm
+    const margin = 10; // Margin in mm
+    const contentWidth = pdfWidth - margin;
 
-    if (navigator.share) {
-        try {
-            await navigator.share({
-                title: RaportName.value.length > 0 ? `${RaportName.value} Report` : 'QTLC Report',
-                files: [file],
-            });
-            console.log('Shared successfully');
-        } catch (error) {
-            console.error('Error sharing:', error);
-        }
-    } else {
-        alert('Web Share API is not supported in this browser.');
-    }      
-    }
+    // Use jsPDF's built-in html method to parse and render text content
+    await pdf.html(reportContent, {
+        x: margin,
+        y: margin,
+        width: contentWidth,
+        windowWidth: reportContent.scrollWidth, // Ensure correct scaling of content
+        callback: async (pdf) => {
+            // Save or share the PDF
+            if (mode === 'save') {
+                pdf.save(`${`${RaportName.value}.report` || 'Report'}.pdf`);
+            } else if (mode === 'share') {
+                const pdfBytes = pdf.output('arraybuffer');
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const fileName = RaportName.value.length > 0 ? `${RaportName.value}.report.pdf` : 'Report.pdf';
+                const file = new File([blob], fileName, { type: 'application/pdf' });
+
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: RaportName.value.length > 0 ? `${RaportName.value} Report` : 'QTLC Report',
+                            files: [file],
+                        });
+                        console.log('Shared successfully');
+                    } catch (error) {
+                        console.error('Error sharing:', error);
+                    }
+                } else {
+                    alert('Web Share API is not supported in this browser.');
+                }
+            }
+        },
+    });
 }
 
+
+
 savePdfButton.addEventListener('click', () => {
-  make_pdf('save');
+  generatePDF('save');
 });
 
 shareButton.addEventListener('click', async () => {
-  make_pdf('share');
+  generatePDF('share');
 });
 
   </script>

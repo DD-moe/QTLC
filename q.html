@@ -962,8 +962,9 @@ Array.from(files).forEach((file, index) => {
     // Process button action
     processButton.addEventListener('click', async () => {
       // make info report page
+      const measureKEY = generateUniqueUrl('c');
       const imagesFormat = useLossless.checked ? 'png' : 'jpeg';
-      const info_page = ReportaddPage();
+      const info_page = ReportaddPage(measureKEY, 'info');
       ReportaddText('New measurement type: "spot only analysis" was attempted', 'h3', info_page);
       if (measurmentComment.value.length > 0) {
         ReportaddText(`'${measurmentComment.value}'` , 'p', info_page);
@@ -1016,7 +1017,7 @@ Array.from(files).forEach((file, index) => {
       const normalised = divideImageDataAndNormalize(readyData, readyBcg);
       // raport image:
       if (includeImages.checked) {
-        const image_page = ReportaddPage();
+        const image_page = ReportaddPage(measureKEY, 'image');
         ReportaddText('spot cutted image:', 'p', image_page);
         ReportaddImage(imageData, imagesFormat, image_page);
         ReportaddText('spot cutted image - grayscale:', 'p', image_page);
@@ -1044,8 +1045,8 @@ Array.from(files).forEach((file, index) => {
       const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
       // report metrices od peak in table
       if (includeParams.checked) {
-        const peak_page = ReportaddPage();
-        const PeakMetrices_l = PeakMetrices;
+        const peak_page = ReportaddPage(measureKEY, 'peak');
+        const PeakMetrices_l = structuredClone(PeakMetrices);
         delete PeakMetrices_l.formulas;
         ReportaddTable(PeakMetrices_l, 'Parameter', 'value', peak_page);        
       }
@@ -1071,7 +1072,7 @@ Array.from(files).forEach((file, index) => {
         ReportaddTable(spotMetrics, 'Parameter', 'value', info_page);
       }
       if (includeExplanations.checked) {
-        const explanations = ReportaddPage();
+        const explanations = ReportaddPage(measureKEY, 'explanations');
         ReportaddText('Formulas used to count params', 'h3', explanations);
         ReportaddHTMLFromString(PeakMetrices.formulas, 'div', explanations);
         ReportaddText('Other measurement params:', 'h3', explanations);
@@ -1185,7 +1186,7 @@ Array.from(files).forEach((file, index) => {
       }
       if (includeMetadata.checked) {
         const currentModel = await getSharableData();
-        const localMeta = ReportaddPage();
+        const localMeta = ReportaddPage(measureKEY, 'measuremeta');
         ReportaddText(`Model data in JSON used for current prediction:` , 'p', localMeta);
         ReportaddText(currentModel , 'span', localMeta);
       }
@@ -1373,11 +1374,44 @@ function updateTable() {
 
 
 function createConcentrationCurve() {
-            // Calculate linear regression coefficients
-            current_curve = linearRegression(measurements);
-            displayFormula(current_curve, 'formuldBox');
+    // Calculate linear regression coefficients
+    current_curve = linearRegression(measurements);
+    displayFormula(current_curve, 'formuldBox');
+    const concentration = ReportaddPage(generateUniqueUrl('c'), 'curve');
+    ReportaddText('Concentration curve creation was attempted' , 'h3', concentration);
+    const formula = document.getElementById('formuldBox').innerHTML;
+    ReportaddText('Formula was created:' , 'strong', concentration);
+    ReportaddHTMLFromString(formula, 'div', concentration);
+    if (includeParams.checked) {
+      const curve_data = document.getElementById('data-container').innerHTML;
+      ReportaddText('Data used for formula creation:' , 'strong', concentration);
+      const curve_table = remove_nr_Column(curve_data, 2);
+      ReportaddHTMLFromString(curve_table, 'div', concentration);
+    }
+  }
 
-        }
+  function remove_nr_Column(htmlString, nr) {
+    // Parse the HTML string into a DOM structure
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlString, 'text/html');
+    
+    // Find the table
+    const table = doc.querySelector('table');
+    if (!table) {
+        console.error('No table found in the HTML string.');
+        return htmlString; // Return original HTML if no table is found
+    }
+
+    // Loop through all rows in the table
+    const rows = table.querySelectorAll('tr');
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('th, td');
+        cells[nr].remove();
+    });
+
+    // Serialize the updated DOM back to an HTML string
+    return doc.body.innerHTML;
+}
 
 function predictConcentration(){
     const Ratio = parseFloat(resolutionRatio.value);
@@ -1992,6 +2026,7 @@ function ReportaddTable(data, column_1_header, column_2_header, page) {
 async function generateHTML(mode) {
   try {
     generate_metadata();
+    generate_summary();
     const doc = await exportReportContent();
     const blob = new Blob([doc], { type: "text/html" });
     if (mode === 'save') {
@@ -2078,7 +2113,7 @@ if (!previewStyle) {
 ${previewStyle.innerHTML}
     </style>
 </head>
-<body class=".pdf">
+<body class="pdf">
     ${clone.innerHTML}
 </body>
 </html>
@@ -2088,13 +2123,15 @@ ${previewStyle.innerHTML}
 
 
 
-function ReportaddPage(){
+function ReportaddPage(groupId, sectionType){
   if (isRecording) {
         let page = document.createElement('div');
         let hr = document.createElement('hr');
         page.classList.add("page");
         reportContent.appendChild(page);
-
+        if (groupId) page.setAttribute('data-group-id', groupId);
+        if (sectionType) page.setAttribute('data-section-type', sectionType); 
+        page.id = generateUniqueUrl('nav');
         reportContent.appendChild(hr);
         return page;
     }
@@ -2171,7 +2208,8 @@ function loadHtmlToReportContent() {
 
 function generate_metadata(){
   if (includeMetadata.checked) {
-    const metadata = ReportaddPage();
+
+    const metadata = ReportaddPage(generateUniqueUrl('metadata'),'metadata');
     // Retrieve information from document head
     const version = document.head.querySelector('meta[name="version"]')?.content || 'N/A';
     const authors = document.head.querySelector('meta[name="authors"]')?.content || 'Unknown';
@@ -2189,6 +2227,85 @@ function generate_metadata(){
       ReportaddHTMLFromString(htmlData, 'div', metadata);    
   }
 }
+
+function generate_summary(){
+
+  let summaries = document.querySelectorAll(`[data-section-type="summary"]`);
+  summaries.forEach( sm =>{reportContent.removeChild(sm)}); //remove all summaries
+
+  if (includeSummary.checked) {
+    
+      // Create the metadata section if it doesn't exist
+    const  summary = ReportaddPage(generateUniqueUrl('summary'),'summary');
+
+    if (!reportContent) {
+          console.error('reportContent element not found.');
+          return;
+    }
+    
+    // Get all div elements with the class "page" within reportContent
+    const pages = Array.from(reportContent.querySelectorAll('.page'));
+
+    // Group elements by their data-group-id
+    const groups = {};
+    pages.forEach(page => {
+        const groupId = page.getAttribute('data-group-id');
+        const sectionType = page.getAttribute('data-section-type');
+        const navigation = page.id;
+
+        if (groupId && sectionType) {
+            if (!groups[groupId]) {
+                groups[groupId] = [];
+            }
+            groups[groupId].push({
+                element: page,
+                sectionType: sectionType,
+                navigation: navigation
+            });
+        }
+    });
+
+    // Generate the list of content
+    const contentList = document.createElement('ul');
+    contentList.className = 'summary-content-list';
+    let nr = 1;
+    Object.entries(groups).forEach(([groupId, groupElements]) => {
+        const groupItem = document.createElement('li');
+        groupItem.textContent = `Operation: ${nr}`;
+        nr ++;
+        const groupSubList = document.createElement('ul');
+
+        groupElements.forEach(({ element, sectionType, navigation }) => {
+            const sectionItem = document.createElement('li');
+            const link = document.createElement('a');
+            link.textContent = sectionType;
+            link.href = `#${navigation}`; // Ensure the element has an ID for navigation
+
+            sectionItem.appendChild(link);
+            groupSubList.appendChild(sectionItem);
+        });
+
+        groupItem.appendChild(groupSubList);
+        contentList.appendChild(groupItem);
+    });
+
+    // Clear existing summary content and append the new list
+    summary.innerHTML = '';
+    summary.appendChild(contentList);
+
+    // Move summary to the beginning of reportContent
+    if (reportContent.firstChild !== summary) {
+        reportContent.insertBefore(summary, reportContent.firstChild);
+    }    
+  }
+}
+
+function generateUniqueUrl(baseUrl) {
+    const timestamp = Date.now(); // Current timestamp in milliseconds
+    const randomNumber = Math.random().toString(36).substring(2, 10); // Random alphanumeric string
+    return `${baseUrl}${timestamp}${randomNumber}`;
+}
+
 
 </script>
 

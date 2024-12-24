@@ -287,7 +287,8 @@ h2 {
       justify-content: flex-start;
       width: 100%;
     }
-
+</style>
+<style id="preview">
 .pdf {
     padding: 0;
     margin: 0;
@@ -295,8 +296,8 @@ h2 {
     background-color: white;
 
 
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 1.5vh;
+    line-height: 1;
     box-sizing: border-box;
     border: none;
 }
@@ -313,17 +314,17 @@ h2 {
 }
 
 .pdf h1 {
-    font-size: 24px;
+    font-size: 3vh;
     margin: 0;
 }
 
 .pdf h2 {
-    font-size: 20px;
+    font-size: 2.5vh;
     margin: 0;
 }
 
 .pdf h3 {
-    font-size: 16px;
+    font-size: 2vh;
     margin: 0;
 }
 
@@ -338,24 +339,24 @@ h2 {
 }
 
 .pdf img {
-    max-width: 95%; /* Scale images to fit the container */
+    width: 32%; /* Scale images to fit the container */
     height: auto;
-    margin: 10px auto;
+    margin: 0 0 0 0;
     display: inline-block;
 }
 
 .pdf table {
     width: 95%;
     border-collapse: collapse;
-    margin: 15px 0;
-    font-size: 12px;
+    margin: 0 0 0 0;
+    font-size: 1.5vh;
 }
 
 .pdf th, 
 .pdf td {
     border: 1px solid #ccc;
-    padding: 8px;
-    text-align: left;
+    padding: 0;
+    text-align: center;
 }
 
 .pdf th {
@@ -375,7 +376,7 @@ div.page{
     margin: 0;
     width: 100%;
     box-sizing: border-box; /* Include padding in width/height */
-    padding: 1em 1em 1em 1em;
+    padding: 1% 1% 1% 1%;
 }
 
   </style>
@@ -516,8 +517,11 @@ div.page{
     <input type="text" id="RaportName"> 
     <button id="recordButton">Start Recording Report</button>
     <button id="clearButton">Clear Report</button>
-    <button id="savePdfButton">Save as PDF</button>
-    <button id="shareButton">Share PDF</button>
+    <button id="savePdfButton">Save as html</button>
+    <button id="shareButton">Share as html</button>
+    <label for="ReportfileInput">load report html</label>
+    <input type="file" id="ReportfileInput" accept=".html" onchange="loadHtmlToReportContent()">
+
 
     <!-- report params section -->
     <div class="section_border">
@@ -535,7 +539,9 @@ div.page{
         <label for="includeMetadata">Include metadata such as date, time, author, and version information</label>
         <input type="checkbox" id="includeMetadata">
         <label for="includeSummary">Add a summary section to the report</label>
-        <input type="checkbox" id="includeSummary">        
+        <input type="checkbox" id="includeSummary">
+        <label for="MergeImportedReports">When loading new report add it to previous</label>
+        <input type="checkbox" id="MergeImportedReports">         
       </div>
     </div>
 
@@ -545,9 +551,6 @@ div.page{
 </div>
 
 <!-- other scripts -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/print-js@1.6.0/dist/print.min.js"></script>
 
 <!-- other scripts -->
 
@@ -623,6 +626,7 @@ div.page{
     const RaportName = document.getElementById('RaportName'); 
     const raportCanvas = document.getElementById('raportCanvas'); 
     const measurmentComment = document.getElementById('measurmentComment');
+    const ReportfileInput = document.getElementById('ReportfileInput');
     // report settings
     const ReportSettings_container = document.getElementById('ReportSettings_container');
     const includeImages = document.getElementById('includeImages');
@@ -631,6 +635,7 @@ div.page{
     const includeExplanations = document.getElementById('includeExplanations');
     const includeMetadata = document.getElementById('includeMetadata');
     const includeSummary = document.getElementById('includeSummary');
+    const MergeImportedReports = document.getElementById('MergeImportedReports');
 
     let current_sum = 0;
     const measurements = []; // 2D array for storing data
@@ -1843,19 +1848,20 @@ function ReportaddTable(data, column_1_header, column_2_header, page) {
     }
 }
 
-async function generatePDF(mode) {
+async function generateHTML(mode) {
   try {
-    document.body.style.zoom = "100%";
-    const pdf = await mergeAllDivsToPDF();
-
+    const doc = await exportReportContent();
+    const blob = new Blob([doc], { type: "text/html" });
     if (mode === 'save') {
-      pdf.save(`${RaportName.value || 'Report'}.pdf`);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "report.html";
+      a.click();
+      URL.revokeObjectURL(a.href);
       return true;
     } else if (mode === 'share') {
-      const pdfBytes = pdf.output('arraybuffer');
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const fileName = RaportName.value.length > 0 ? `${RaportName.value}.report.pdf` : 'Report.pdf';
-      const file = new File([blob], fileName, { type: 'application/pdf' });
+      const file = new File([blob], fileName, { type: 'text/html' });
 
       if (navigator.share) {
         try {
@@ -1881,44 +1887,64 @@ async function generatePDF(mode) {
 }
 
 
-async function mergeAllDivsToPDF() {
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
-
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const pageWidth = pdf.internal.pageSize.getWidth();
-
-  // Get the container element
-  if (!reportContent) {
-    console.error("Page container element not found!");
-    throw new Error("Page container element not found!");
-  }
-
-  // Get all direct child elements with the class 'page'
-  const pages = Array.from(reportContent.querySelectorAll(":scope > .page"));
-
-  for (const [index, page] of pages.entries()) {
-    // Adjust the style of the current page
-
-    await pdf.html(page, {
-      x: 0,
-      y: pageHeight * index,
-      width: pageWidth, // Ensure it fits within the page
-      windowWidth: page.scrollWidth, // Optional: Scale content to fit
-    });
-
-    if (index < pages.length - 1) {
-      pdf.addPage("a4", "p");
+async function exportReportContent() {
+    if (!reportContent) {
+        console.error("Element with ID 'reportContent' not found.");
+        return;
     }
-  }
 
-  // Return the generated PDF
-  return pdf;
+    const previewStyle = document.querySelectorAll('style')[1];
+
+if (!previewStyle) {
+    console.error("Preview style element not found.");
+    return;
 }
+
+    const clone = reportContent.cloneNode(true);
+
+    // Convert all <img> elements to use data URLs
+    const images = clone.querySelectorAll("img");
+    for (const img of images) {
+        if (img.src.startsWith("data:")) continue; // Skip already embedded images
+        try {
+            const response = await fetch(img.src);
+            const blob = await response.blob();
+            const reader = new FileReader();
+
+            await new Promise((resolve, reject) => {
+                reader.onload = () => {
+                    img.src = reader.result; // Replace src with data URL
+                    resolve();
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error(`Failed to fetch image: ${img.src}`, error);
+        }
+    }
+
+    // Wrap the cloned content in a complete HTML structure
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report</title>
+    <style>
+${previewStyle.innerHTML}
+    </style>
+</head>
+<body>
+    ${clone.innerHTML}
+</body>
+</html>
+`;
+}
+
+
+
 
 function ReportaddPage(){
   if (isRecording) {
@@ -1938,7 +1964,7 @@ let previousColor = savePdfButton.style.backgroundColor;
 savePdfButton.addEventListener('click', async () => {
   savePdfButton.textContent = '(preparing report)';
   savePdfButton.style.backgroundColor = 'blue';
-  const status = await generatePDF('save');
+  const status = await generateHTML('save');
   savePdfButton.textContent = status ? '(report success)' : '(report failed)';
   savePdfButton.style.backgroundColor = status ? 'green' : 'red';
   // wait 0.5 s
@@ -1953,7 +1979,7 @@ shareButton.addEventListener('click', async () => {
   
   shareButton.textContent = '(preparing report)';
   shareButton.style.backgroundColor = 'blue';
-  await generatePDF('share');
+  await generateHTML('share');
   savePdfButton.textContent = status ? '(report success)' : '(report failed)';
   savePdfButton.style.backgroundColor = status ? 'green' : 'red';
   // wait 0.5 s
@@ -1962,6 +1988,44 @@ shareButton.addEventListener('click', async () => {
   shareButton.style.backgroundColor = previousColorShare;
 });
 
+
+function loadHtmlToReportContent() {
+    const merge = MergeImportedReports.checked;
+    const file = ReportfileInput.files[0];
+    if (!file) {
+        console.error("No file selected.");
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(reader.result, "text/html");
+
+        // Extract body content
+        const bodyContent = doc.body.innerHTML;
+
+        // Find the reportContent element
+        if (!reportContent) {
+            console.error("Element with ID 'reportContent' not found.");
+            return;
+        }
+
+        // Replace or merge content
+        if (merge) {
+          reportContent.innerHTML += bodyContent;
+        } else {
+          reportContent.innerHTML = bodyContent;
+        }
+    };
+
+    reader.onerror = () => {
+        console.error("Error reading file:", reader.error);
+    };
+
+    reader.readAsText(file);
+}
 
 </script>
 

@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Quantity TLC Image Processor - A scientific web app for analyzing and processing Thin Layer Chromatography (TLC) images with precision and efficiency.">
   <meta name="keywords" content="TLC image processing, Thin Layer Chromatography, scientific web app, image analysis, chromatography tools, web-based TLC analysis, no installation TLC software, client-side image analysis, smartphone TLC processor, UV chamber analysis, TLC plate analysis, lightweight TLC app, first online TLC tool, serverless chromatography, portable TLC image processor, TLC for mobile devices, instant TLC quantification, web app for TLC quantification, TLC analysis anywhere, innovative TLC tools, online chromatography software">
-  <meta name="author" content="Damian Bezara">
+  <meta name="authors" content="Damian Bezara">
+  <meta name="version" content="3.1.0">
   <meta name="robots" content="index, follow">
   <title>Quantity TLC Image Processor</title>
   <style>
@@ -199,6 +200,13 @@ span {
   text-align: left;
 }
 
+strong {
+  font-weight: bold;
+  color: #000000;
+  font-size: 1.2em;
+  text-align: left;
+}
+
 em {
   font-style: italic;
   color: #26173d;
@@ -335,7 +343,18 @@ h2 {
 
 .pdf span {
     margin: 0;
-    text-align: justify;
+    word-wrap: break-word; /* Ensures long words break and wrap */
+    overflow-wrap: anywhere; /* Breaks words at any point if necessary */
+    white-space: normal; /* Allows text to wrap onto the next line */
+    display: inline-block; /* Allows the span to behave like a block for wrapping */
+    max-width: 100%; /* Limits the width to prevent horizontal scrolling */       
+}
+
+.pdf strong {
+  font-weight: bold;
+  color: #000000;
+  font-size: 1.6vh;
+  text-align: left;
 }
 
 .pdf img {
@@ -941,7 +960,7 @@ Array.from(files).forEach((file, index) => {
 });
 
     // Process button action
-    processButton.addEventListener('click', () => {
+    processButton.addEventListener('click', async () => {
       // make info report page
       const imagesFormat = useLossless.checked ? 'png' : 'jpeg';
       const info_page = ReportaddPage();
@@ -949,8 +968,7 @@ Array.from(files).forEach((file, index) => {
       if (measurmentComment.value.length > 0) {
         ReportaddText(`'${measurmentComment.value}'` , 'p', info_page);
       } 
-      
-
+    
       const boxSize_X = parseInt(slider_X.value, 10);
       const boxSize_Y = parseInt(slider_Y.value, 10);
       const boxShiftLeft = parseInt(slider_L.value);
@@ -1025,10 +1043,13 @@ Array.from(files).forEach((file, index) => {
       //console.log(startMountain, endMountain, blurredData.length - 1);
       const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
       // report metrices od peak in table
-      const peak_page = ReportaddPage();
-      const PeakMetrices_l = PeakMetrices;
-      delete PeakMetrices_l.formulas;
-      ReportaddTable(PeakMetrices_l, 'Parameter', 'value', peak_page);
+      if (includeParams.checked) {
+        const peak_page = ReportaddPage();
+        const PeakMetrices_l = PeakMetrices;
+        delete PeakMetrices_l.formulas;
+        ReportaddTable(PeakMetrices_l, 'Parameter', 'value', peak_page);        
+      }
+
 
       PeakhtmlString = objectToHtml(PeakMetrices);
       drawLineChart(blurredData, "chartCanvas");
@@ -1046,7 +1067,111 @@ Array.from(files).forEach((file, index) => {
         ReportaddText('selected spot peak on chart:', 'p', info_page);
         ReportaddImageFromCanvas(chartCanvas, imagesFormat, info_page);         
       }
-      ReportaddTable(spotMetrics, 'Parameter', 'value', info_page);
+      if (includeParams.checked) {
+        ReportaddTable(spotMetrics, 'Parameter', 'value', info_page);
+      }
+      if (includeExplanations.checked) {
+        const explanations = ReportaddPage();
+        ReportaddText('Formulas used to count params', 'h3', explanations);
+        ReportaddHTMLFromString(PeakMetrices.formulas, 'div', explanations);
+        ReportaddText('Other measurement params:', 'h3', explanations);
+        const imageProcessingOptions = `
+          <table>
+            <tr>
+              <th>Parameter Name</th>
+              <th>Description</th>
+              <th>Used Value</th>
+            </tr>
+            <tr>
+              <td>rotate_right_90</td>
+              <td>Rotate both data and background images by 90 degrees in the right direction</td>
+              <td>${rotateRight90.checked}</td>
+            </tr>
+            <tr>
+              <td>flip_horizontally</td>
+              <td>Flip both data and background images horizontally</td>
+              <td>${flipHorizontally.checked}</td>
+            </tr>
+            <tr>
+              <td>data_file</td>
+              <td>Number of photos loaded to data input</td>
+              <td>${dataInput.files.length}</td>
+            </tr>
+            <tr>
+              <td>background_file</td>
+              <td>Number of photos loaded to background input</td>
+              <td>${backgroundInput.files.length }</td>
+            </tr>
+            <tr>
+              <td>constant_treshold</td>
+              <td>When checked - use constant pixel value from 'spot detection treshold' as treshold to detect spot instead of percent of darkest pixels</td>
+              <td>${constTreshold.checked}</td>
+            </tr>
+            <tr>
+              <td>spot_detection_treshold</td>
+              <td>Value to be used as treshold to detect spots</td>
+              <td>${percentageInput.value}</td>
+            </tr>
+            <tr>
+              <td>slider_X</td>
+              <td>Horizontal size of spot analysis area in px</td>
+              <td>${slider_X.value}</td>
+            </tr>
+            <tr>
+              <td>slider_Y</td>
+              <td>Vertical size of spot analysis area in px</td>
+              <td>${slider_Y.value}</td>
+            </tr>
+            <tr>
+              <td>slider_L</td>
+              <td>Horizontal shift of spot analysis area in px</td>
+              <td>${slider_L.value}</td>
+            </tr>
+            <tr>
+              <td>slider_T</td>
+              <td>Vertical shift of spot analysis area in px</td>
+              <td>${slider_T.value}</td>
+            </tr>
+            <tr>
+              <td>chart_blurr</td>
+              <td>Kernel size to blur chart data before further processing</td>
+              <td>${chart_blurr.value}</td>
+            </tr>
+            <tr>
+              <td>border_treshold</td>
+              <td>Minimal difference between measurement pixel row and neighbors to detect valley</td>
+              <td>${borderTreshold.value}</td>
+            </tr>
+            <tr>
+              <td>kernel_valley_treshols</td>
+              <td>Size of neighbor pixel rows - kernel for valley detection</td>
+              <td>${kernelValleyTreshols.value}</td>
+            </tr>
+            <tr>
+              <td>use_AUC</td>
+              <td>If true AUC of one spot is used for concentration prediction, else whole spot conglomeration area</td>
+              <td>${useAUC.checked}</td>
+            </tr>
+            <tr>
+              <td>red_Factor</td>
+              <td>Red channel multiplier</td>
+              <td>${redFactor.value}</td>
+            </tr>
+            <tr>
+              <td>green_Factor</td>
+              <td>Green channel multiplier</td>
+              <td>${greenFactor.value}</td>
+            </tr>
+            <tr>
+              <td>blue_Factor</td>
+              <td>Blue channel multiplier</td>
+              <td>${blueFactor.value}</td>
+            </tr>
+          </table>        
+        `
+        ReportaddHTMLFromString(imageProcessingOptions, 'div', explanations);
+      }
+      
       
       resultBox.innerHTML = `<h2>average spot intensity:   <span>${average}</span></h2>
       <h2>sum of pixels:   <span>${sum}</span></h2>
@@ -1055,7 +1180,16 @@ Array.from(files).forEach((file, index) => {
       PeakresultBox.innerHTML = PeakhtmlString;
       if (Object.keys(current_curve).length !== 0) {
         predictConcentration();
+        ReportaddText(`${predictionBox.textContent}` , 'p', info_page);
+        ReportaddText(`Resolution Ratio: ${resolutionRatio.value}` , 'p', info_page);
       }
+      if (includeMetadata.checked) {
+        const currentModel = await getSharableData();
+        const localMeta = ReportaddPage();
+        ReportaddText(`Model data in JSON used for current prediction:` , 'p', localMeta);
+        ReportaddText(currentModel , 'span', localMeta);
+      }
+        
     });
 
     function toGrayscale(imageData, rFactor, gFactor, bFactor) {
@@ -1781,6 +1915,13 @@ function ReportaddText(text, element, page) {
     }
 }
 
+function ReportaddHTMLFromString(htmlString, element, page) {
+    if (isRecording) {
+        let div = document.createElement(element);
+        div.innerHTML = htmlString;
+        page.appendChild(div);
+    }
+}
 
 function ReportaddImage(imageData, format, page) {
     if (isRecording) {
@@ -1850,6 +1991,7 @@ function ReportaddTable(data, column_1_header, column_2_header, page) {
 
 async function generateHTML(mode) {
   try {
+    generate_metadata();
     const doc = await exportReportContent();
     const blob = new Blob([doc], { type: "text/html" });
     if (mode === 'save') {
@@ -1860,7 +2002,7 @@ async function generateHTML(mode) {
       URL.revokeObjectURL(a.href);
       return true;
     } else if (mode === 'share') {
-      const fileName = RaportName.value.length > 0 ? `${RaportName.value}.report.pdf` : 'Report.pdf';
+      const fileName = RaportName.value.length > 0 ? `${RaportName.value}.report.html` : 'Report.html';
       const file = new File([blob], fileName, { type: 'text/html' });
 
       if (navigator.share) {
@@ -1881,7 +2023,7 @@ async function generateHTML(mode) {
       }
     }
   } catch (error) {
-    console.error("Error generating PDF:", error);
+    console.error("Error generating HTML:", error);
     return false;
   }
 }
@@ -2025,6 +2167,27 @@ function loadHtmlToReportContent() {
     };
 
     reader.readAsText(file);
+}
+
+function generate_metadata(){
+  if (includeMetadata.checked) {
+    const metadata = ReportaddPage();
+    // Retrieve information from document head
+    const version = document.head.querySelector('meta[name="version"]')?.content || 'N/A';
+    const authors = document.head.querySelector('meta[name="authors"]')?.content || 'Unknown';
+    
+    // Get current date and time
+    const currentDateTime = new Date().toLocaleString();
+
+    const htmlData = `
+        <h1>Web App Metadata</h1>
+        <p><strong>App Version:</strong> ${version}</p>
+        <p><strong>App Authors:</strong> ${authors}</p>
+        <p><strong>Date and Time:</strong> ${currentDateTime}</p>
+      `;
+
+      ReportaddHTMLFromString(htmlData, 'div', metadata);    
+  }
 }
 
 </script>

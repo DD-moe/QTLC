@@ -1030,7 +1030,9 @@ Array.from(files).forEach((file, index) => {
       drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
       // data for chart
       previewCtx.putImageData(detectedSpotImage, 0, 0);
-      const {sum, average, pixelCount, average_color} = calculateSum(detectedSpotImage);
+      const spotMetrics = calculateSum(detectedSpotImage);
+      const { sum, average, pixelCount, average_color } = spotMetrics;
+
       current_sum = useAUC.checked ? PeakMetrices.S : sum;
       // report images
       if (includeImages.checked) {
@@ -1039,6 +1041,8 @@ Array.from(files).forEach((file, index) => {
         ReportaddText('selected spot peak on chart:', 'p', info_page);
         ReportaddImageFromCanvas(chartCanvas, imagesFormat, info_page);         
       }
+      ReportaddTable(spotMetrics, 'Parameter', 'value', info_page);
+      
       resultBox.innerHTML = `<h2>average spot intensity:   <span>${average}</span></h2>
       <h2>sum of pixels:   <span>${sum}</span></h2>
       <h2>spot area:   <span>${pixelCount}</span></h2>
@@ -1947,11 +1951,11 @@ shareButton.addEventListener('click', async () => {
   let previousTextShare = shareButton.textContent;
   let previousColorShare = shareButton.style.backgroundColor;
   
-  shareButton.textContent = '(preparing share)';
+  shareButton.textContent = '(preparing report)';
   shareButton.style.backgroundColor = 'blue';
   await generatePDF('share');
-  shareButton.textContent = '(share complete)';
-  shareButton.style.backgroundColor = 'green';
+  savePdfButton.textContent = status ? '(report success)' : '(report failed)';
+  savePdfButton.style.backgroundColor = status ? 'green' : 'red';
   // wait 0.5 s
   await new Promise(resolve => setTimeout(resolve, 500));
   shareButton.textContent = previousTextShare;

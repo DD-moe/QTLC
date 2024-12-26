@@ -443,9 +443,7 @@ div.page{
       <label for="borderTreshold">Treshold for valley detection in %</label>
       <input type="number" id="borderTreshold" min="0" max="5" value="1">    
       <label for="kernelValleyTreshols">Kernel for valley detection in pixels</label>
-      <input type="number" id="kernelValleyTreshols" min="1" max="15" value="3">
-      <label for="track_analysis">analyse whole track instead of single peak</label>
-      <input type="checkbox" id="track_analysis">          
+      <input type="number" id="kernelValleyTreshols" min="1" max="5" value="3">       
     </div>
 </div>
 
@@ -470,7 +468,6 @@ div.page{
     <h3 onclick="toggleVisibility('outcome_container', 'outcome_container_title', 'auto')" name="Result Panel" id="outcome_container_title">(hide) Result Panel</h3>
     <div id="outcome_container" class="section">
       <canvas id="preview-canvas" class="preview-canvas"></canvas>
-      <canvas id="raw-canvas" class="preview-canvas"></canvas>
       <canvas id="chartCanvas" class="preview-canvas"></canvas>
       <div class="section_border">
         <div id="resultBox" class="section">Spot Parameters not ready yet</div>
@@ -591,8 +588,7 @@ div.page{
     const slider_L = document.getElementById('slider_L');
     const sliderValue_L = document.getElementById('slider-value_L');
     const slider_T = document.getElementById('slider_T');
-    const sliderValue_T = document.getElementById('slider-value_T');
-    const track_analysis = document.getElementById('track_analysis');    
+    const sliderValue_T = document.getElementById('slider-value_T');    
     // process
     const processButton = document.getElementById('process-button');
     const dataCanvas = document.getElementById('data-canvas');
@@ -600,9 +596,7 @@ div.page{
     const backgroundCanvas = document.getElementById('background-canvas');
     const bcgCtx = backgroundCanvas.getContext('2d');
     const previewCanvas = document.getElementById('preview-canvas');
-    const previewCtx = previewCanvas.getContext('2d'); 
-    const rawCanvas = document.getElementById('raw-canvas');
-    const rawCtx = rawCanvas.getContext('2d'); 
+    const previewCtx = previewCanvas.getContext('2d');
     const percentageInput = document.getElementById("percentageInput");
     const constTreshold = document.getElementById('constTreshold');
     const borderTreshold  = document.getElementById('borderTreshold');
@@ -751,7 +745,6 @@ div.page{
       includeExplanations.checked = data.includeExplanations;
       includeMetadata.checked = data.includeMetadata;
       includeSummary.checked = data.includeSummary;
-      track_analysis.checked = data.track_analysis;
       displayFormula(current_curve, 'formuldBox');
       toggleVisibility('model_container', 'model_container_title', data.model_container);
       toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
@@ -806,8 +799,7 @@ div.page{
         includeParams: includeParams.checked,
         includeExplanations: includeExplanations.checked,
         includeMetadata: includeMetadata.checked,
-        includeSummary: includeSummary.checked,
-        track_analysis: track_analysis.checked
+        includeSummary: includeSummary.checked
       }
       const textData = JSON.stringify(data);
       if (clipboard) {
@@ -969,576 +961,237 @@ Array.from(files).forEach((file, index) => {
 
     // Process button action
     processButton.addEventListener('click', async () => {
-      if (track_analysis.checked) {
-        await whole_track_analysis();
-        //await peak_analysis();
-      }
-      else{
-        await peak_analysis();
-      }
-    });
-
-
-
-async function whole_track_analysis(){ // analysierrr
-  // make info report page
-  const measureKEY = generateUniqueUrl('c');
-  const imagesFormat = useLossless.checked ? 'png' : 'jpeg';
-  const info_page = ReportaddPage(measureKEY, 'info');
-  ReportaddText('New measurement type: "spot only analysis" was attempted', 'h3', info_page);
-  if (measurmentComment.value.length > 0) {
-    ReportaddText(`'${measurmentComment.value}'` , 'p', info_page);
-  } 
-
-  const boxSize_X = parseInt(slider_X.value, 10);
-  const boxSize_Y = parseInt(slider_Y.value, 10);
-  const boxShiftLeft = parseInt(slider_L.value);
-  const boxShiftTop = parseInt(slider_T.value);
-  const dataWidth = dataCanvas.width;
-  const dataHeight = dataCanvas.height;
-
-  const r = parseFloat(redFactor.value);
-  const g = parseFloat(blueFactor.value);
-  const b = parseFloat(blueFactor.value);
-
-  if (dataWidth === 0 || dataHeight === 0) {
-    alert('Please upload a data image first.');
-    return;
-  }
-
-  // Calculate the box dimensions
-  const boxHalf_X = Math.floor(boxSize_X / 2);
-  const boxHalf_Y = Math.floor(boxSize_Y / 2);
-  const centerX = Math.floor(dataWidth / 2);
-  const centerY = Math.floor(dataHeight / 2);
-  const startX = centerX - boxHalf_X - boxShiftLeft;
-  const startY = centerY - boxHalf_Y - boxShiftTop;
-
-  // Draw the box to the preview canvas
-  previewCanvas.width = boxSize_X;
-  previewCanvas.height = boxSize_Y;
-
-  // get image data prepared to normalzation
-  const imageData = dataCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
-  // vvv create previed data
-  previewCtx.putImageData(imageData, 0, 0);
-  rawCanvas.width = boxSize_X - 20;
-  rawCanvas.height = boxSize_Y - 20;
-  const rawPreview = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
-  rawCtx.putImageData(rawPreview, 0, 0);
-  // ^^^ create preview data
-  const grayData = toGrayscale(imageData, r, g, b);
-  previewCtx.putImageData(grayData, 0, 0);
-  previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
-  previewCtx.drawImage(previewCanvas, 0, 0);   
-  previewCtx.filter = 'none';
-  const readyData = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
-
-  // get image data prepared to normalzation
-  const bcgData = bcgCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);      
-  const grayBcg = toGrayscale(bcgData, r, g, b);
-  previewCtx.putImageData(grayBcg, 0, 0);
-  previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
-  previewCtx.drawImage(previewCanvas, 0, 0);   
-  previewCtx.filter = 'none';
-  const readyBcg = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
-  const normalised = divideImageDataAndNormalize(readyData, readyBcg);  
-
-  previewCanvas.width = boxSize_X - 20;
-  previewCanvas.height = boxSize_Y - 20;
-  const percentage = parseFloat(percentageInput.value);
-  const detectedSpotImage = processImageData(normalised, percentage);  
-
-  // data for chart
-  const columnSums = calculateColumnSums(detectedSpotImage);
-  const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
-  const peaks = findPeaks(blurredData);
-  let distances = [];
-  let peakParams = [];
-  let interPeakParams = [];
-  let starts = [];
-  let ends = [];
-  console.log(peaks.length, peaks);
-  previewCtx.putImageData(detectedSpotImage, 0, 0);
-  drawLineChart(blurredData, "chartCanvas");
-
-    // raport image:
-    if (includeImages.checked) {
-      const image_page = ReportaddPage(measureKEY, 'image');
-      ReportaddText('spot cutted image:', 'p', image_page);
-      ReportaddImage(imageData, imagesFormat, image_page);
-      ReportaddText('spot cutted image - grayscale:', 'p', image_page);
-      ReportaddImage(grayData, imagesFormat, image_page);
-      ReportaddText('spot cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
-      ReportaddImage(readyData, imagesFormat, image_page);          
-      ReportaddText('background cutted image:', 'p', image_page);
-      ReportaddImage(bcgData, format = imagesFormat, image_page);
-      ReportaddText('background cutted image - grayscale:', 'p', image_page);
-      ReportaddImage(grayBcg, format = imagesFormat, image_page);
-      ReportaddText('background cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
-      ReportaddImage(readyBcg, format = imagesFormat, image_page);    
-      ReportaddText('normalised image by dividing spot image by background image', 'p', image_page);
-      ReportaddImage(normalised, format = imagesFormat, image_page);
-      // info page
-      ReportaddText('selected track form background:', 'p', info_page);
-      ReportaddImageFromCanvas(previewCanvas, imagesFormat, info_page); 
-      ReportaddText('selected track peaks on chart:', 'p', info_page);
-      ReportaddImageFromCanvas(chartCanvas, imagesFormat, info_page);   
-      ReportaddText('selected raw track:', 'p', info_page);
-      ReportaddImageFromCanvas(rawCanvas, imagesFormat, info_page); 
-    }
-
-  peaks.forEach( (peak) => { 
-    const {startMountain, endMountain} = SimplefindMountainRange(blurredData, peak, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
-    drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
-    const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
-    //PeakhtmlString = objectToHtml(PeakMetrices);
-    // data for chart
-    distances.push(endMountain - startMountain);
-    starts.push(startMountain);
-    ends.push(endMountain);
-    const Rfactor = peak / blurredData.length;
-    const Kfactor = (1 - Rfactor) / Rfactor;
-    PeakMetrices.RF = Rfactor; // peak is index of blurredData
-    PeakMetrices.k = Kfactor; // retention factor
-    PeakMetrices.RM = Math.log10(Kfactor); // RM factor
-    PeakMetrices.HobsBAS = PeakMetrices.Wbas / 16 / Rfactor, // Hobs at basis
-    PeakMetrices.Hobs05 = PeakMetrices.W05 / 16 / Rfactor, // Hobs at basis at 50% of height
-    PeakMetrices.NobsBAS = 16 * Rfactor / PeakMetrices.Wbas, // nr of theoretical shelves at base of peak
-    PeakMetrices.Nobs05 = 16 * Rfactor / PeakMetrices.W05 // nr of theoretical shelves at 50% of peak
-    peakParams.push(PeakMetrices);
-  });
-  for (let i = 0; i < peaks.length - 1; i++) {
-    width2 = (ends[i+1] - starts[i+1]) / blurredData.length;
-    width1 = (ends[i] - starts[i]) / blurredData.length;
-    const Rfactor1 = peaks[i] / blurredData.length;
-    const Rfactor2 = peaks[i+1] / blurredData.length;
-    const RSz = (Rfactor2 - Rfactor1) / 0.5 / (width2 + width1);
-    k2 = (1 - Rfactor2) / Rfactor2;
-    k1 = (1 - Rfactor1) / Rfactor1;
-    const selectivity = 0.25 * ( k2 / k1 - 1);
-    const RFavg = (Rfactor1 + Rfactor2) / 2;
-    const efficacyBAS = RFavg * peakParams[i].NobsBAS;
-    const efficacy05 = RFavg * peakParams[i].Nobs05;
-    const retention = 1 - RFavg;
-    const RSssrBAS = selectivity * retention * efficacyBAS;
-    const RSssr05 = selectivity * retention * efficacy05;
-    interPeakParams.push({
-      RSz: RSz,
-      RSssrBAS: RSssrBAS,
-      RSssr05: RSssr05
-    });
-  }
-  let PeakhtmlString = '<h2>Peaks analysis</h2>';
-  for (let i = 0; i < peakParams.length; i++) {
-    const element = peakParams[i];
-    //const raw_element = structuredClone(element);
-    //delete raw_element.formulas;
-    HTMLfragment = objectToHtml(element); // for now formulas explanation for all peaks
-    PeakhtmlString += `<h3>peak: ${i + 1}</h3>`; // header nr of peak
-    PeakhtmlString += HTMLfragment;
-    PeakhtmlString += '<hr>';
-  }
-  let InterPeakhtmlString = '<h2>Inter-Peaks analysis</h2>';
-  for (let i = 0; i < interPeakParams.length; i++) {
-    const element = interPeakParams[i];
-    //const raw_element = structuredClone(element);
-    //delete raw_element.formulas;
-    HTMLfragment = objectToHtml(element); // for now formulas explanation for all peaks
-    InterPeakhtmlString += `<h3>Inter-peak: ${i + 1}</h3>`; // header nr of peak
-    InterPeakhtmlString += HTMLfragment;
-    InterPeakhtmlString += '<hr>';
-  }  
-  const previewHTML = PeakhtmlString + InterPeakhtmlString;
-  PeakresultBox.innerHTML = previewHTML;
-  // report metrices od peak in table
-  if (includeParams.checked) {
-    const peak_page = ReportaddPage(measureKEY, 'peak');
-    ReportaddHTMLFromString(previewHTML , 'div', peak_page);        
-  }
-  if (includeMetadata.checked) {
-    const currentModel = await getSharableData();
-    const localMeta = ReportaddPage(measureKEY, 'measuremeta');
-    ReportaddText(`Model data in JSON used for current track analysis:` , 'p', localMeta);
-    ReportaddText(currentModel , 'span', localMeta);
-  }
-  if (includeExplanations.checked) {
-    const explanations = ReportaddPage(measureKEY, 'explanations');
-    otherMetricessReport(explanations);
-  }
-}
-
-
-function SimplefindMountainRange(array, index, maxNeighbours, threshold) {
-    let leftValleys = [];
-    let rightValleys = [];
-
-    const getNeighbours = (index, direction) => {
-        let neighbours = [];
-        for (let i = 1; i <= maxNeighbours; i++) {
-            let neighbourIndex = index + i * direction;
-            if (neighbourIndex >= 0 && neighbourIndex < array.length) {
-                neighbours.push(array[neighbourIndex]);
-            }
-        }
-        return neighbours;
-    };
-
-    // Check if there are any elements with value 0
-    const hasZero = array.includes(0);
-
-    if (hasZero) {
-        // If the specified index is 0, set range to the entire array
-        if (array[index] === 0) {
-            return { startMountain: 0, endMountain: array.length - 1 };
-        }
-
-        // Otherwise, find the last non-zero element to the left and right of the index
-        let startMountain = 0;
-        let endMountain = array.length - 1;
-
-        for (let i = index; i >= 0; i--) {
-            if (array[i] !== 0) {
-                startMountain = i;
-            } else {
-                break;
-            }
-        }
-
-        for (let i = index; i < array.length; i++) {
-            if (array[i] !== 0) {
-                endMountain = i;
-            } else {
-                break;
-            }
-        }
-
-        return { startMountain, endMountain };
-    }
-
-    // No elements with value 0; continue with finding valleys
-    for (let i = 0; i < array.length; i++) {
-        const leftNeighbours = getNeighbours(i, -1);
-        const rightNeighbours = getNeighbours(i, 1);
-
-        const leftAvg = leftNeighbours.length
-            ? leftNeighbours.reduce((a, b) => a + b, 0) / leftNeighbours.length
-            : null;
-
-        const rightAvg = rightNeighbours.length
-            ? rightNeighbours.reduce((a, b) => a + b, 0) / rightNeighbours.length
-            : null;
-
-        const element = array[i];
-        const avgLeft = leftAvg !== null ? leftAvg : rightAvg;
-        const avgRight = rightAvg !== null ? rightAvg : leftAvg;
-
-        if (
-            avgLeft !== null &&
-            avgRight !== null &&
-            avgLeft > element * (1 + threshold / 100) &&
-            avgRight > element * (1 + threshold / 100)
-        ) {
-            if (i < index) {
-                leftValleys.push(i);
-            } else {
-                rightValleys.push(i);
-            }
-        }
-    }
-
-    let startMountain, endMountain;
-
-    if (leftValleys.length === 0) {
-        startMountain = 0;
-    } else {
-        startMountain = leftValleys[leftValleys.length - 1];
-    }
-
-    if (rightValleys.length === 0) {
-        endMountain = array.length - 1;
-    } else {
-        endMountain = rightValleys[0];
-    }
-
-    return { startMountain, endMountain };
-}
-
-function findPeaks(arr) {
-    const peaks = [];
-    for (let i = 1; i < arr.length - 1; i++) {
-        if (arr[i] > arr[i - 1] && arr[i] > arr[i + 1]) {
-            peaks.push(i);
-        }
-    }
-    return peaks;
-}
-
-  // Update sliders when track_analysis is toggled
-  track_analysis.addEventListener('change', () => {
-    const updateSlider = (slider, minValue, maxValue, valueDisplay) => {
-      slider.min = minValue;
-      slider.max = maxValue;
-      // Ensure slider value is within the new range
-      slider.value = Math.max(minValue, Math.min(slider.value, maxValue));
-      valueDisplay.textContent = slider.value;
-    };
-
-    if (track_analysis.checked) {
-      const maxH = Math.round(dataCanvas.height * 0.1);
-      const SmaxH = maxH > 30 ? maxH : dataCanvas.height;
-      const maxW = Math.round(dataCanvas.width * 0.1);
-      const SmaxW = maxW > 30 ? maxW : dataCanvas.width;
-      updateSlider(slider_X, 30, dataCanvas.width, sliderValue_X);
-      updateSlider(slider_Y, 30, SmaxH, sliderValue_Y);
-      updateSlider(slider_L, -Math.round(SmaxW / 2), Math.round(SmaxW / 2), sliderValue_L);
-      updateSlider(slider_T, -Math.round(SmaxH / 2), Math.round(SmaxH / 2), sliderValue_T);
-      rawCanvas.style.display = 'block';
-    } else {
-      updateSlider(slider_X, 0, 150, sliderValue_X);
-      updateSlider(slider_Y, 0, 150, sliderValue_Y);
-      updateSlider(slider_L, -50, 50, sliderValue_L);
-      updateSlider(slider_T, -50, 50, sliderValue_T);
-      rawCanvas.style.display = 'none';
-    }
-  });
-
- async function peak_analysis(){ // analysierrr
-    // make info report page
-    const measureKEY = generateUniqueUrl('c');
-    const imagesFormat = useLossless.checked ? 'png' : 'jpeg';
-    const info_page = ReportaddPage(measureKEY, 'info');
-    ReportaddText('New measurement type: "whole track analysis" was attempted', 'h3', info_page);
-    if (measurmentComment.value.length > 0) {
-      ReportaddText(`'${measurmentComment.value}'` , 'p', info_page);
-    } 
-  
-    const boxSize_X = parseInt(slider_X.value, 10);
-    const boxSize_Y = parseInt(slider_Y.value, 10);
-    const boxShiftLeft = parseInt(slider_L.value);
-    const boxShiftTop = parseInt(slider_T.value);
-    const dataWidth = dataCanvas.width;
-    const dataHeight = dataCanvas.height;
-
-    const r = parseFloat(redFactor.value);
-    const g = parseFloat(blueFactor.value);
-    const b = parseFloat(blueFactor.value);
-
-    if (dataWidth === 0 || dataHeight === 0) {
-      alert('Please upload a data image first.');
-      return;
-    }
-
-    // Calculate the box dimensions
-    const boxHalf_X = Math.floor(boxSize_X / 2);
-    const boxHalf_Y = Math.floor(boxSize_Y / 2);
-    const centerX = Math.floor(dataWidth / 2);
-    const centerY = Math.floor(dataHeight / 2);
-    const startX = centerX - boxHalf_X - boxShiftLeft;
-    const startY = centerY - boxHalf_Y - boxShiftTop;
-
-    // Draw the box to the preview canvas
-    previewCanvas.width = boxSize_X;
-    previewCanvas.height = boxSize_Y;
-    // get image data prepared to normalzation
-    const imageData = dataCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
-    const grayData = toGrayscale(imageData, r, g, b);
-    previewCtx.putImageData(grayData, 0, 0);
-    previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
-    previewCtx.drawImage(previewCanvas, 0, 0);   
-    previewCtx.filter = 'none';
-    const readyData = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
-
-    // get image data prepared to normalzation
-    const bcgData = bcgCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);      
-    const grayBcg = toGrayscale(bcgData, r, g, b);
-    previewCtx.putImageData(grayBcg, 0, 0);
-    previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
-    previewCtx.drawImage(previewCanvas, 0, 0);   
-    previewCtx.filter = 'none';
-    const readyBcg = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
-    const normalised = divideImageDataAndNormalize(readyData, readyBcg);
-    // raport image:
-    if (includeImages.checked) {
-      const image_page = ReportaddPage(measureKEY, 'image');
-      ReportaddText('spot cutted image:', 'p', image_page);
-      ReportaddImage(imageData, imagesFormat, image_page);
-      ReportaddText('spot cutted image - grayscale:', 'p', image_page);
-      ReportaddImage(grayData, imagesFormat, image_page);
-      ReportaddText('spot cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
-      ReportaddImage(readyData, imagesFormat, image_page);          
-      ReportaddText('background cutted image:', 'p', image_page);
-      ReportaddImage(bcgData, format = imagesFormat, image_page);
-      ReportaddText('background cutted image - grayscale:', 'p', image_page);
-      ReportaddImage(grayBcg, format = imagesFormat, image_page);
-      ReportaddText('background cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
-      ReportaddImage(readyBcg, format = imagesFormat, image_page);    
-      ReportaddText('normalised image by dividing spot image by background image', 'p', image_page);
-      ReportaddImage(normalised, format = imagesFormat, image_page);         
-    }
-    previewCanvas.width = boxSize_X - 20;
-    previewCanvas.height = boxSize_Y - 20;
-    const percentage = parseFloat(percentageInput.value);
-    const detectedSpotImage = processImageData(normalised, percentage);
-    // data for chart
-    const columnSums = calculateColumnSums(detectedSpotImage);
-    const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
-    const { startMountain, endMountain } = findMountainRange(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
-    //console.log(startMountain, endMountain, blurredData.length - 1);
-    const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
-    // report metrices od peak in table
-    if (includeParams.checked) {
-      const peak_page = ReportaddPage(measureKEY, 'peak');
-      const PeakMetrices_l = structuredClone(PeakMetrices);
-      delete PeakMetrices_l.formulas;
-      ReportaddTable(PeakMetrices_l, 'Parameter', 'value', peak_page);        
-    }
-
-
-    const PeakhtmlString = objectToHtml(PeakMetrices);
-    drawLineChart(blurredData, "chartCanvas");
-    drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
-    // data for chart
-    previewCtx.putImageData(detectedSpotImage, 0, 0);
-    const spotMetrics = calculateSum(detectedSpotImage);
-    const { sum, average, pixelCount, average_color } = spotMetrics;
-
-    current_sum = useAUC.checked ? PeakMetrices.S : sum;
-    // report images
-    if (includeImages.checked) {
-      ReportaddText('selected spot form background:', 'p', info_page);
-      ReportaddImageFromCanvas(previewCanvas, imagesFormat, info_page); 
-      ReportaddText('selected spot peak on chart:', 'p', info_page);
-      ReportaddImageFromCanvas(chartCanvas, imagesFormat, info_page);         
-    }
-    if (includeParams.checked) {
-      ReportaddTable(spotMetrics, 'Parameter', 'value', info_page);
-    }
-    if (includeExplanations.checked) {
-      const explanations = ReportaddPage(measureKEY, 'explanations');
-      ReportaddText('Formulas used to count params', 'h3', explanations);
-      ReportaddHTMLFromString(PeakMetrices.formulas, 'div', explanations);
-      otherMetricessReport(explanations);
-    }
+      // make info report page
+      const measureKEY = generateUniqueUrl('c');
+      const imagesFormat = useLossless.checked ? 'png' : 'jpeg';
+      const info_page = ReportaddPage(measureKEY, 'info');
+      ReportaddText('New measurement type: "spot only analysis" was attempted', 'h3', info_page);
+      if (measurmentComment.value.length > 0) {
+        ReportaddText(`'${measurmentComment.value}'` , 'p', info_page);
+      } 
     
-    
-    resultBox.innerHTML = `<h2>average spot intensity:   <span>${average}</span></h2>
-    <h2>sum of pixels:   <span>${sum}</span></h2>
-    <h2>spot area:   <span>${pixelCount}</span></h2>
-    <h2>average pixel intensity:   <span>${average_color}</span></h2>`;
-    PeakresultBox.innerHTML = PeakhtmlString;
-    if (Object.keys(current_curve).length !== 0) {
-      predictConcentration();
-      ReportaddText(`${predictionBox.textContent}` , 'p', info_page);
-      ReportaddText(`Resolution Ratio: ${resolutionRatio.value}` , 'p', info_page);
-    }
-    if (includeMetadata.checked) {
-      const currentModel = await getSharableData();
-      const localMeta = ReportaddPage(measureKEY, 'measuremeta');
-      ReportaddText(`Model data in JSON used for current prediction:` , 'p', localMeta);
-      ReportaddText(currentModel , 'span', localMeta);
-    }
+      const boxSize_X = parseInt(slider_X.value, 10);
+      const boxSize_Y = parseInt(slider_Y.value, 10);
+      const boxShiftLeft = parseInt(slider_L.value);
+      const boxShiftTop = parseInt(slider_T.value);
+      const dataWidth = dataCanvas.width;
+      const dataHeight = dataCanvas.height;
+
+      const r = parseFloat(redFactor.value);
+      const g = parseFloat(blueFactor.value);
+      const b = parseFloat(blueFactor.value);
+
+      if (dataWidth === 0 || dataHeight === 0) {
+        alert('Please upload a data image first.');
+        return;
+      }
+
+      // Calculate the box dimensions
+      const boxHalf_X = Math.floor(boxSize_X / 2);
+      const boxHalf_Y = Math.floor(boxSize_Y / 2);
+      const centerX = Math.floor(dataWidth / 2);
+      const centerY = Math.floor(dataHeight / 2);
+      const startX = centerX - boxHalf_X - boxShiftLeft;
+      const startY = centerY - boxHalf_Y - boxShiftTop;
+
+      // Draw the box to the preview canvas
+      previewCanvas.width = boxSize_X;
+      previewCanvas.height = boxSize_Y;
+      // get image data prepared to normalzation
+      const imageData = dataCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
+      const grayData = toGrayscale(imageData, r, g, b);
+      previewCtx.putImageData(grayData, 0, 0);
+      previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
+      previewCtx.drawImage(previewCanvas, 0, 0);   
+      previewCtx.filter = 'none';
+      const readyData = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
+
+      // get image data prepared to normalzation
+      const bcgData = bcgCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);      
+      const grayBcg = toGrayscale(bcgData, r, g, b);
+      previewCtx.putImageData(grayBcg, 0, 0);
+      previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
+      previewCtx.drawImage(previewCanvas, 0, 0);   
+      previewCtx.filter = 'none';
+      const readyBcg = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
+      const normalised = divideImageDataAndNormalize(readyData, readyBcg);
+      // raport image:
+      if (includeImages.checked) {
+        const image_page = ReportaddPage(measureKEY, 'image');
+        ReportaddText('spot cutted image:', 'p', image_page);
+        ReportaddImage(imageData, imagesFormat, image_page);
+        ReportaddText('spot cutted image - grayscale:', 'p', image_page);
+        ReportaddImage(grayData, imagesFormat, image_page);
+        ReportaddText('spot cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
+        ReportaddImage(readyData, imagesFormat, image_page);          
+        ReportaddText('background cutted image:', 'p', image_page);
+        ReportaddImage(bcgData, format = imagesFormat, image_page);
+        ReportaddText('background cutted image - grayscale:', 'p', image_page);
+        ReportaddImage(grayBcg, format = imagesFormat, image_page);
+        ReportaddText('background cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
+        ReportaddImage(readyBcg, format = imagesFormat, image_page);    
+        ReportaddText('normalised image by dividing spot image by background image', 'p', image_page);
+        ReportaddImage(normalised, format = imagesFormat, image_page);         
+      }
+      previewCanvas.width = boxSize_X - 20;
+      previewCanvas.height = boxSize_Y - 20;
+      const percentage = parseFloat(percentageInput.value);
+      const detectedSpotImage = processImageData(normalised, percentage);
+      // data for chart
+      const columnSums = calculateColumnSums(detectedSpotImage);
+      const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
+      const { startMountain, endMountain } = findMountainRange(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
+      //console.log(startMountain, endMountain, blurredData.length - 1);
+      const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
+      // report metrices od peak in table
+      if (includeParams.checked) {
+        const peak_page = ReportaddPage(measureKEY, 'peak');
+        const PeakMetrices_l = structuredClone(PeakMetrices);
+        delete PeakMetrices_l.formulas;
+        ReportaddTable(PeakMetrices_l, 'Parameter', 'value', peak_page);        
+      }
+
+
+      PeakhtmlString = objectToHtml(PeakMetrices);
+      drawLineChart(blurredData, "chartCanvas");
+      drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
+      // data for chart
+      previewCtx.putImageData(detectedSpotImage, 0, 0);
+      const spotMetrics = calculateSum(detectedSpotImage);
+      const { sum, average, pixelCount, average_color } = spotMetrics;
+
+      current_sum = useAUC.checked ? PeakMetrices.S : sum;
+      // report images
+      if (includeImages.checked) {
+        ReportaddText('selected spot form background:', 'p', info_page);
+        ReportaddImageFromCanvas(previewCanvas, imagesFormat, info_page); 
+        ReportaddText('selected spot peak on chart:', 'p', info_page);
+        ReportaddImageFromCanvas(chartCanvas, imagesFormat, info_page);         
+      }
+      if (includeParams.checked) {
+        ReportaddTable(spotMetrics, 'Parameter', 'value', info_page);
+      }
+      if (includeExplanations.checked) {
+        const explanations = ReportaddPage(measureKEY, 'explanations');
+        ReportaddText('Formulas used to count params', 'h3', explanations);
+        ReportaddHTMLFromString(PeakMetrices.formulas, 'div', explanations);
+        ReportaddText('Other measurement params:', 'h3', explanations);
+        const imageProcessingOptions = `
+          <table>
+            <tr>
+              <th>Parameter Name</th>
+              <th>Description</th>
+              <th>Used Value</th>
+            </tr>
+            <tr>
+              <td>rotate_right_90</td>
+              <td>Rotate both data and background images by 90 degrees in the right direction</td>
+              <td>${rotateRight90.checked}</td>
+            </tr>
+            <tr>
+              <td>flip_horizontally</td>
+              <td>Flip both data and background images horizontally</td>
+              <td>${flipHorizontally.checked}</td>
+            </tr>
+            <tr>
+              <td>data_file</td>
+              <td>Number of photos loaded to data input</td>
+              <td>${dataInput.files.length}</td>
+            </tr>
+            <tr>
+              <td>background_file</td>
+              <td>Number of photos loaded to background input</td>
+              <td>${backgroundInput.files.length }</td>
+            </tr>
+            <tr>
+              <td>constant_treshold</td>
+              <td>When checked - use constant pixel value from 'spot detection treshold' as treshold to detect spot instead of percent of darkest pixels</td>
+              <td>${constTreshold.checked}</td>
+            </tr>
+            <tr>
+              <td>spot_detection_treshold</td>
+              <td>Value to be used as treshold to detect spots</td>
+              <td>${percentageInput.value}</td>
+            </tr>
+            <tr>
+              <td>slider_X</td>
+              <td>Horizontal size of spot analysis area in px</td>
+              <td>${slider_X.value}</td>
+            </tr>
+            <tr>
+              <td>slider_Y</td>
+              <td>Vertical size of spot analysis area in px</td>
+              <td>${slider_Y.value}</td>
+            </tr>
+            <tr>
+              <td>slider_L</td>
+              <td>Horizontal shift of spot analysis area in px</td>
+              <td>${slider_L.value}</td>
+            </tr>
+            <tr>
+              <td>slider_T</td>
+              <td>Vertical shift of spot analysis area in px</td>
+              <td>${slider_T.value}</td>
+            </tr>
+            <tr>
+              <td>chart_blurr</td>
+              <td>Kernel size to blur chart data before further processing</td>
+              <td>${chart_blurr.value}</td>
+            </tr>
+            <tr>
+              <td>border_treshold</td>
+              <td>Minimal difference between measurement pixel row and neighbors to detect valley</td>
+              <td>${borderTreshold.value}</td>
+            </tr>
+            <tr>
+              <td>kernel_valley_treshols</td>
+              <td>Size of neighbor pixel rows - kernel for valley detection</td>
+              <td>${kernelValleyTreshols.value}</td>
+            </tr>
+            <tr>
+              <td>use_AUC</td>
+              <td>If true AUC of one spot is used for concentration prediction, else whole spot conglomeration area</td>
+              <td>${useAUC.checked}</td>
+            </tr>
+            <tr>
+              <td>red_Factor</td>
+              <td>Red channel multiplier</td>
+              <td>${redFactor.value}</td>
+            </tr>
+            <tr>
+              <td>green_Factor</td>
+              <td>Green channel multiplier</td>
+              <td>${greenFactor.value}</td>
+            </tr>
+            <tr>
+              <td>blue_Factor</td>
+              <td>Blue channel multiplier</td>
+              <td>${blueFactor.value}</td>
+            </tr>
+          </table>        
+        `
+        ReportaddHTMLFromString(imageProcessingOptions, 'div', explanations);
+      }
       
-  }
-
-  function otherMetricessReport(page){
-    ReportaddText('Other measurement params:', 'h3', page);
-      const imageProcessingOptions = `
-        <table>
-          <tr>
-            <th>Parameter Name</th>
-            <th>Description</th>
-            <th>Used Value</th>
-          </tr>
-          <tr>
-            <td>rotate_right_90</td>
-            <td>Rotate both data and background images by 90 degrees in the right direction</td>
-            <td>${rotateRight90.checked}</td>
-          </tr>
-          <tr>
-            <td>flip_horizontally</td>
-            <td>Flip both data and background images horizontally</td>
-            <td>${flipHorizontally.checked}</td>
-          </tr>
-          <tr>
-            <td>data_file</td>
-            <td>Number of photos loaded to data input</td>
-            <td>${dataInput.files.length}</td>
-          </tr>
-          <tr>
-            <td>background_file</td>
-            <td>Number of photos loaded to background input</td>
-            <td>${backgroundInput.files.length }</td>
-          </tr>
-          <tr>
-            <td>constant_treshold</td>
-            <td>When checked - use constant pixel value from 'spot detection treshold' as treshold to detect spot instead of percent of darkest pixels</td>
-            <td>${constTreshold.checked}</td>
-          </tr>
-          <tr>
-            <td>spot_detection_treshold</td>
-            <td>Value to be used as treshold to detect spots</td>
-            <td>${percentageInput.value}</td>
-          </tr>
-          <tr>
-            <td>slider_X</td>
-            <td>Horizontal size of spot analysis area in px</td>
-            <td>${slider_X.value}</td>
-          </tr>
-          <tr>
-            <td>slider_Y</td>
-            <td>Vertical size of spot analysis area in px</td>
-            <td>${slider_Y.value}</td>
-          </tr>
-          <tr>
-            <td>slider_L</td>
-            <td>Horizontal shift of spot analysis area in px</td>
-            <td>${slider_L.value}</td>
-          </tr>
-          <tr>
-            <td>slider_T</td>
-            <td>Vertical shift of spot analysis area in px</td>
-            <td>${slider_T.value}</td>
-          </tr>
-          <tr>
-            <td>chart_blurr</td>
-            <td>Kernel size to blur chart data before further processing</td>
-            <td>${chart_blurr.value}</td>
-          </tr>
-          <tr>
-            <td>border_treshold</td>
-            <td>Minimal difference between measurement pixel row and neighbors to detect valley</td>
-            <td>${borderTreshold.value}</td>
-          </tr>
-          <tr>
-            <td>kernel_valley_treshols</td>
-            <td>Size of neighbor pixel rows - kernel for valley detection</td>
-            <td>${kernelValleyTreshols.value}</td>
-          </tr>
-          <tr>
-            <td>use_AUC</td>
-            <td>If true AUC of one spot is used for concentration prediction, else whole spot conglomeration area</td>
-            <td>${useAUC.checked}</td>
-          </tr>
-          <tr>
-            <td>red_Factor</td>
-            <td>Red channel multiplier</td>
-            <td>${redFactor.value}</td>
-          </tr>
-          <tr>
-            <td>green_Factor</td>
-            <td>Green channel multiplier</td>
-            <td>${greenFactor.value}</td>
-          </tr>
-          <tr>
-            <td>blue_Factor</td>
-            <td>Blue channel multiplier</td>
-            <td>${blueFactor.value}</td>
-          </tr>
-        </table>        
-      `
-      ReportaddHTMLFromString(imageProcessingOptions, 'div', page);
-  }
+      
+      resultBox.innerHTML = `<h2>average spot intensity:   <span>${average}</span></h2>
+      <h2>sum of pixels:   <span>${sum}</span></h2>
+      <h2>spot area:   <span>${pixelCount}</span></h2>
+      <h2>average pixel intensity:   <span>${average_color}</span></h2>`;
+      PeakresultBox.innerHTML = PeakhtmlString;
+      if (Object.keys(current_curve).length !== 0) {
+        predictConcentration();
+        ReportaddText(`${predictionBox.textContent}` , 'p', info_page);
+        ReportaddText(`Resolution Ratio: ${resolutionRatio.value}` , 'p', info_page);
+      }
+      if (includeMetadata.checked) {
+        const currentModel = await getSharableData();
+        const localMeta = ReportaddPage(measureKEY, 'measuremeta');
+        ReportaddText(`Model data in JSON used for current prediction:` , 'p', localMeta);
+        ReportaddText(currentModel , 'span', localMeta);
+      }
+        
+    });
 
     function toGrayscale(imageData, rFactor, gFactor, bFactor) {
     const { width, height, data } = imageData;
@@ -2124,10 +1777,9 @@ function calculateMountainMetrics(array, start, end) {
 }
 
 function objectToHtml(obj) {
-    const rows = Object.entries(obj)
-        .map(([key, value]) => `<tr><td>${key}</td><td>${value}</td></tr>`)
+    return Object.entries(obj)
+        .map(([key, value]) => `<h2>${key}: <span>${value}</span></h2>`)
         .join('');
-    return `<table border="1"><tbody>${rows}</tbody></table>`;
 }
 
 function drawVerticalLines(canvasId, startMountain, endMountain, dataLength) {
@@ -2159,7 +1811,6 @@ function drawVerticalLines(canvasId, startMountain, endMountain, dataLength) {
     ctx.stroke();
 
     // Draw the second vertical line
-    ctx.strokeStyle = "red";
     ctx.beginPath();
     ctx.moveTo(endX, 0);         // Start at the top of the canvas
     ctx.lineTo(endX, canvas.height); // End at the bottom of the canvas

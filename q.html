@@ -1394,7 +1394,7 @@ function findPeaks(arr) {
     if (track_analysis.checked) {
       const maxH = Math.round(dataCanvas.height * 0.1);
       const SmaxH = maxH > 30 ? maxH : dataCanvas.height;
-      const maxW = Math.round(dataCanvas.width * 0.1);
+      const maxW = Math.round(dataCanvas.width * 0.5);
       const SmaxW = maxW > 30 ? maxW : dataCanvas.width;
       updateSlider(slider_X, 30, dataCanvas.width, sliderValue_X);
       updateSlider(slider_Y, 30, SmaxH, sliderValue_Y);

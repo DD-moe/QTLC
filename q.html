@@ -443,7 +443,7 @@ div.page{
       <label for="borderTreshold">Treshold for valley detection in %</label>
       <input type="number" id="borderTreshold" min="0" max="5" value="1">    
       <label for="kernelValleyTreshols">Kernel for valley detection in pixels</label>
-      <input type="number" id="kernelValleyTreshols" min="1" max="15" value="3">
+      <input type="number" id="kernelValleyTreshols" min="1" max="5" value="3">
       <label for="track_analysis">analyse whole track instead of single peak</label>
       <input type="checkbox" id="track_analysis">          
     </div>
@@ -470,7 +470,7 @@ div.page{
     <h3 onclick="toggleVisibility('outcome_container', 'outcome_container_title', 'auto')" name="Result Panel" id="outcome_container_title">(hide) Result Panel</h3>
     <div id="outcome_container" class="section">
       <canvas id="preview-canvas" class="preview-canvas"></canvas>
-      <canvas id="raw-canvas" class="preview-canvas"></canvas>
+      <canvas id="raw-canvas" class="preview-canvas" style="display: none;"></canvas>
       <canvas id="chartCanvas" class="preview-canvas"></canvas>
       <div class="section_border">
         <div id="resultBox" class="section">Spot Parameters not ready yet</div>
@@ -978,7 +978,106 @@ Array.from(files).forEach((file, index) => {
       }
     });
 
+  function analyzeArrayWithKernel(array, kernelSize, height) {
+    const mountains = [];
+    let status = "constant"; // Possible values: "constant", "ascending", "descending"
+    let mountainStart = null;
+    let mountainEnd = null;
 
+    for (let i = 0; i < array.length; i++) {
+        // Get neighbors to the right based on kernel size
+        const neighbors = [];
+        for (let k = 1; k <= kernelSize; k++) {
+            if (i + k < array.length) {
+                neighbors.push(array[i + k]);
+            }
+        }
+
+        // Calculate the average of neighbors
+        const average = neighbors.length > 0 
+            ? neighbors.reduce((sum, val) => sum + val, 0) / neighbors.length
+            : 0;
+
+        // Determine the new status based on comparison with average
+        let newStatus;
+        if (array[i] > average) {
+            newStatus = "descending";
+        } else if (array[i] < average) {
+            newStatus = "ascending";
+        } else {
+            newStatus = "constant";
+        }
+
+        // Handle status change logic
+        if (newStatus !== status) {
+            if ((status === "constant" || status === "descending") && newStatus === "ascending" ) {
+              if (mountainStart !== null) {
+                mountainEnd = i;
+                mountains.push({ start: mountainStart, end: mountainEnd });
+                mountainStart = i;
+                mountainEnd = null;                
+              }
+              else{
+                mountainStart = mountainStart === null ? i : mountainStart;
+              }
+                
+            } 
+            else if (status === "descending" && mountainStart !== null && (newStatus === "constant" )) {
+                mountainEnd = i;
+                mountains.push({ start: mountainStart, end: mountainEnd });
+                mountainStart = null;
+                mountainEnd = null;
+            }          
+
+            // Update status
+            //console.log(status, newStatus);
+            status = newStatus;
+            
+        }
+    }
+    // Find the global minimum and maximum values in arr
+    const globalMin = Math.min(...array);
+    const globalMax = Math.max(...array);
+    const globalDistance = globalMax - globalMin;
+    // Validate and extract real mountains
+    const realMountains = mountains.filter(({ start, end }) => {
+      const fragment = array.slice(start, end + 1); // Get the fragment of arr
+      const fragmentMin = Math.min(...fragment);
+      const fragmentMax = Math.max(...fragment);
+      const fragmentDistance = fragmentMax - fragmentMin;
+
+      // Compare fragment distance to x% of global distance
+      return fragmentDistance >= (height / 100) * globalDistance;
+    });
+    return realMountains;
+}
+
+function findMaxIndex(array, startIndex, endIndex) {
+    // Validate indices
+    if (startIndex < 0 || endIndex >= array.length || startIndex > endIndex) {
+        throw new Error("Invalid start or end index.");
+    }
+
+    // Find the maximum value in the range
+    let maxValue = -Infinity;
+    for (let i = startIndex; i <= endIndex; i++) {
+        if (array[i] > maxValue) {
+            maxValue = array[i];
+        }
+    }
+
+    // Collect all indices with the maximum value
+    const maxIndices = [];
+    for (let i = startIndex; i <= endIndex; i++) {
+        if (array[i] === maxValue) {
+            maxIndices.push(i);
+        }
+    }
+
+    // Return the index in the middle of the max indices
+    const middleIndex = Math.floor(maxIndices.length / 2);
+    return maxIndices[middleIndex];
+}
 
 async function whole_track_analysis(){ // analysierrr
   // make info report page
@@ -1052,13 +1151,14 @@ async function whole_track_analysis(){ // analysierrr
   // data for chart
   const columnSums = calculateColumnSums(detectedSpotImage);
   const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
-  const peaks = findPeaks(blurredData);
+  //const peaks = findPeaks(blurredData);
+  const mountains = analyzeArrayWithKernel(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
   let distances = [];
   let peakParams = [];
   let interPeakParams = [];
   let starts = [];
   let ends = [];
-  console.log(peaks.length, peaks);
+  //console.log(mountains.length, mountains);
   previewCtx.putImageData(detectedSpotImage, 0, 0);
   drawLineChart(blurredData, "chartCanvas");
 
@@ -1088,8 +1188,10 @@ async function whole_track_analysis(){ // analysierrr
       ReportaddImageFromCanvas(rawCanvas, imagesFormat, info_page); 
     }
 
-  peaks.forEach( (peak) => { 
-    const {startMountain, endMountain} = SimplefindMountainRange(blurredData, peak, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
+  mountains.forEach( (mountain) => { 
+    peak = findMaxIndex(blurredData, mountain.start, mountain.end);
+    const startMountain  = mountain.start;
+    const endMountain = mountain.end;
     drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
     const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
     //PeakhtmlString = objectToHtml(PeakMetrices);
@@ -1108,11 +1210,16 @@ async function whole_track_analysis(){ // analysierrr
     PeakMetrices.Nobs05 = 16 * Rfactor / PeakMetrices.W05 // nr of theoretical shelves at 50% of peak
     peakParams.push(PeakMetrices);
   });
-  for (let i = 0; i < peaks.length - 1; i++) {
+  for (let i = 0; i < mountains.length - 1; i++) {
+    const mountain1 = mountains[i];
+    const mountain2 = mountains[i+1];
+    const peak1 = findMaxIndex(blurredData, mountain1.start, mountain1.end);
+    const peak2 = findMaxIndex(blurredData, mountain2.start, mountain2.end);
+
     width2 = (ends[i+1] - starts[i+1]) / blurredData.length;
     width1 = (ends[i] - starts[i]) / blurredData.length;
-    const Rfactor1 = peaks[i] / blurredData.length;
-    const Rfactor2 = peaks[i+1] / blurredData.length;
+    const Rfactor1 = peak1 / blurredData.length;
+    const Rfactor2 = peak2 / blurredData.length;
     const RSz = (Rfactor2 - Rfactor1) / 0.5 / (width2 + width1);
     k2 = (1 - Rfactor2) / Rfactor2;
     k1 = (1 - Rfactor1) / Rfactor1;
@@ -1383,7 +1490,22 @@ function findPeaks(arr) {
     // data for chart
     const columnSums = calculateColumnSums(detectedSpotImage);
     const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
-    const { startMountain, endMountain } = findMountainRange(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
+    //const { startMountain, endMountain } = findMountainRange(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
+   const mountains = analyzeArrayWithKernel(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
+    const midpoint = Math.round((blurredData.length - 1) / 2);
+    const ranges = [];
+    //console.log(mountains);
+    mountains.forEach((mountain)=>{
+      if(mountain.start <= midpoint && mountain.end >= midpoint){
+        ranges.push(mountain);
+      }
+    });
+    //console.log(ranges);
+    const mountain = ranges.length > 0 ? ranges[0] : {start: 0 , end: blurredData.length - 1};
+    const startMountain  = mountain.start;
+    const endMountain = mountain.end;
+    //console.log(startMountain, endMountain);
+
     //console.log(startMountain, endMountain, blurredData.length - 1);
     const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
     // report metrices od peak in table

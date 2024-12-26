@@ -6,7 +6,7 @@
   <meta name="description" content="Quantity TLC Image Processor - A scientific web app for analyzing and processing Thin Layer Chromatography (TLC) images with precision and efficiency.">
   <meta name="keywords" content="TLC image processing, Thin Layer Chromatography, scientific web app, image analysis, chromatography tools, web-based TLC analysis, no installation TLC software, client-side image analysis, smartphone TLC processor, UV chamber analysis, TLC plate analysis, lightweight TLC app, first online TLC tool, serverless chromatography, portable TLC image processor, TLC for mobile devices, instant TLC quantification, web app for TLC quantification, TLC analysis anywhere, innovative TLC tools, online chromatography software">
   <meta name="authors" content="Damian Bezara">
-  <meta name="version" content="3.1.0">
+  <meta name="version" content="4.1.0">
   <meta name="robots" content="index, follow">
   <title>Quantity TLC Image Processor</title>
   <style>
@@ -1162,32 +1162,6 @@ async function whole_track_analysis(){ // analysierrr
   previewCtx.putImageData(detectedSpotImage, 0, 0);
   drawLineChart(blurredData, "chartCanvas");
 
-    // raport image:
-    if (includeImages.checked) {
-      const image_page = ReportaddPage(measureKEY, 'image');
-      ReportaddText('spot cutted image:', 'p', image_page);
-      ReportaddImage(imageData, imagesFormat, image_page);
-      ReportaddText('spot cutted image - grayscale:', 'p', image_page);
-      ReportaddImage(grayData, imagesFormat, image_page);
-      ReportaddText('spot cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
-      ReportaddImage(readyData, imagesFormat, image_page);          
-      ReportaddText('background cutted image:', 'p', image_page);
-      ReportaddImage(bcgData, format = imagesFormat, image_page);
-      ReportaddText('background cutted image - grayscale:', 'p', image_page);
-      ReportaddImage(grayBcg, format = imagesFormat, image_page);
-      ReportaddText('background cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
-      ReportaddImage(readyBcg, format = imagesFormat, image_page);    
-      ReportaddText('normalised image by dividing spot image by background image', 'p', image_page);
-      ReportaddImage(normalised, format = imagesFormat, image_page);
-      // info page
-      ReportaddText('selected track form background:', 'p', info_page);
-      ReportaddImageFromCanvas(previewCanvas, imagesFormat, info_page); 
-      ReportaddText('selected track peaks on chart:', 'p', info_page);
-      ReportaddImageFromCanvas(chartCanvas, imagesFormat, info_page);   
-      ReportaddText('selected raw track:', 'p', info_page);
-      ReportaddImageFromCanvas(rawCanvas, imagesFormat, info_page); 
-    }
-
   mountains.forEach( (mountain) => { 
     peak = findMaxIndex(blurredData, mountain.start, mountain.end);
     const startMountain  = mountain.start;
@@ -1259,6 +1233,31 @@ async function whole_track_analysis(){ // analysierrr
   const previewHTML = PeakhtmlString + InterPeakhtmlString;
   PeakresultBox.innerHTML = previewHTML;
   // report metrices od peak in table
+      // raport image:
+      if (includeImages.checked) {
+      const image_page = ReportaddPage(measureKEY, 'image');
+      ReportaddText('spot cutted image:', 'p', image_page);
+      ReportaddImage(imageData, imagesFormat, image_page);
+      ReportaddText('spot cutted image - grayscale:', 'p', image_page);
+      ReportaddImage(grayData, imagesFormat, image_page);
+      ReportaddText('spot cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
+      ReportaddImage(readyData, imagesFormat, image_page);          
+      ReportaddText('background cutted image:', 'p', image_page);
+      ReportaddImage(bcgData, format = imagesFormat, image_page);
+      ReportaddText('background cutted image - grayscale:', 'p', image_page);
+      ReportaddImage(grayBcg, format = imagesFormat, image_page);
+      ReportaddText('background cutted image - grayscale & blurred - cutted edges:', 'p', image_page);
+      ReportaddImage(readyBcg, format = imagesFormat, image_page);    
+      ReportaddText('normalised image by dividing spot image by background image', 'p', image_page);
+      ReportaddImage(normalised, format = imagesFormat, image_page);
+      // info page
+      ReportaddText('selected track form background:', 'p', info_page);
+      ReportaddImageFromCanvas(previewCanvas, imagesFormat, info_page); 
+      ReportaddText('selected track peaks on chart:', 'p', info_page);
+      ReportaddImageFromCanvas(chartCanvas, imagesFormat, info_page);   
+      ReportaddText('selected raw track:', 'p', info_page);
+      ReportaddImageFromCanvas(rawCanvas, imagesFormat, info_page); 
+    }
   if (includeParams.checked) {
     const peak_page = ReportaddPage(measureKEY, 'peak');
     ReportaddHTMLFromString(previewHTML , 'div', peak_page);        

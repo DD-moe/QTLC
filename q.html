@@ -1162,20 +1162,10 @@ async function whole_track_analysis(){ // analysierrr
     PeakMetrices.RF = Rfactor; // peak is index of blurredData
     PeakMetrices.k = Kfactor; // retention factor
     PeakMetrices.RM = Math.log10(Kfactor); // RM factor
-    PeakMetrices.HobsBAS = Math.pow(PeakMetrices.Wbas, 2) / 16 / Rfactor, // Hobs at basis
-    PeakMetrices.Hobs05 = Math.pow(PeakMetrices.W05, 2) / 5.54 / Rfactor, // Hobs at basis at 50% of height
-    PeakMetrices.NobsBAS = 16 * Rfactor / PeakMetrices.Wbas, // nr of theoretical shelves at base of peak
-    PeakMetrices.Nobs05 = 5.54 * Math.pow((Rfactor / PeakMetrices.W05) , 2) // nr of theoretical shelves at 50% of peak
-    PeakMetrices.formulas = `
-    <p>Wbas - peak width at basis</p>
-    <p>W05 - peak width at 50% of height</p>
-    <p>k = ( 1 - RF ) / RF</p>
-    <p>RM = log(k)</p>
-    <p>HobsBAS = Wbas^2 / 16 / RF(Zx)</p>
-    <p>Hobs05 = W05^2 / 5.54 / RF(Zx)</p>
-    <p>NobsBAS = 16 * RF / Wbas</p>
-    <p>Nobs05 = 5.54 * (RF / W05) ^ 2</p>    
-    `;
+    PeakMetrices.HobsBAS = Math.pow(PeakMetrices.Wbas, 2) / 16 / Rfactor; // Hobs at basis
+    PeakMetrices.Hobs05 = Math.pow(PeakMetrices.W05, 2) / 5.54 / Rfactor; // Hobs at basis at 50% of height
+    PeakMetrices.NobsBAS = 16 * Rfactor / PeakMetrices.Wbas; // nr of theoretical shelves at base of peak
+    PeakMetrices.Nobs05 = 5.54 * Math.pow((Rfactor / PeakMetrices.W05) , 2); // nr of theoretical shelves at 50% of peak
     peakParams.push(PeakMetrices);
   });
   for (let i = 0; i < mountains.length - 1; i++) {
@@ -1193,18 +1183,72 @@ async function whole_track_analysis(){ // analysierrr
     k1 = (1 - Rfactor1) / Rfactor1;
     const selectivity = 0.25 * ( k2 / k1 - 1);
     const RFavg = (Rfactor1 + Rfactor2) / 2;
-    const efficacyBAS = RFavg * peakParams[i].NobsBAS;
-    const efficacy05 = RFavg * peakParams[i].Nobs05;
+    const efficacyBAS = Math.sqrt(RFavg * peakParams[i].NobsBAS);
+    const efficacy05 = Math.sqrt(RFavg * peakParams[i].Nobs05);
     const retention = 1 - RFavg;
     const RSssrBAS = selectivity * retention * efficacyBAS;
     const RSssr05 = selectivity * retention * efficacy05;
     interPeakParams.push({
       RSz: RSz,
       RSssrBAS: RSssrBAS,
-      RSssr05: RSssr05
+      RSssr05: RSssr05,
     });
   }
-  let PeakhtmlString = '<h2>Peaks analysis</h2>';
+  const Peak_description = `
+    <table>
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Wbas</td>
+          <td>Peak width at basis</td>
+        </tr>
+        <tr>
+          <td>W05</td>
+          <td>Peak width at 50% of height</td>
+        </tr>
+        <tr>
+          <td>k</td>
+          <td>(1 - RF) / RF</td>
+        </tr>
+        <tr>
+          <td>RM</td>
+          <td>log(k)</td>
+        </tr>
+        <tr>
+          <td>HobsBAS</td>
+          <td>Wbas<sup>2</sup> / 16 / RF(Zx) {USP}</td>
+        </tr>
+        <tr>
+          <td>Hobs05</td>
+          <td>W05<sup>2</sup> / 5.54 / RF(Zx) {EP}</td>
+        </tr>
+        <tr>
+          <td>NobsBAS</td>
+          <td>16 * RF / Wbas {USP}</td>
+        </tr>
+        <tr>
+          <td>Nobs05</td>
+          <td>5.54 * (RF / W05)<sup>2</sup> {EP}</td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            USP - United States Pharmacopeia<br>
+            EP - European Pharmacopeia
+          </td>
+        </tr>
+      </tbody>
+    </table> 
+    `;
+  let PeakhtmlString = `<h2>Peaks analysis</h2>
+  <br>
+  ${Peak_description}
+  <br>
+  `;
   for (let i = 0; i < peakParams.length; i++) {
     const element = peakParams[i];
     //const raw_element = structuredClone(element);
@@ -1214,13 +1258,99 @@ async function whole_track_analysis(){ // analysierrr
     PeakhtmlString += HTMLfragment;
     PeakhtmlString += '<hr>';
   }
-  let InterPeakhtmlString = '<h2>Inter-Peaks analysis</h2>';
+  const Track_description = `
+    <table>
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>RF1 (z1)</td>
+          <td>First peak of pair</td>
+        </tr>
+        <tr>
+          <td>RF2 (z2)</td>
+          <td>Second peak of pair</td>
+        </tr>
+        <tr>
+          <td>Wbas_1</td>
+          <td>First peak of pair width at basis</td>
+        </tr>
+        <tr>
+          <td>W05_1</td>
+          <td>First peak of pair width at 50% of height</td>
+        </tr>
+        <tr>
+          <td>RFavg</td>
+          <td>(RF1 + RF2) / 2</td>
+        </tr>
+        <tr>
+          <td>W1 (z1)</td>
+          <td>First peak of pair width  at basis - same as Wbas_1</td>
+        </tr>
+        <tr>
+          <td>W2 (z2)</td>
+          <td>Second peak of pair width at basis</td>
+        </tr>
+        <tr>
+          <td>RSz</td>
+          <td>(RF2 - RF1) / 0.5 / (W1 + W2)</td>
+        </tr>
+        <tr>
+          <td>NobsBAS</td>
+          <td>16 * RF1 / Wbas_1 {USP}</td>
+        </tr>
+        <tr>
+          <td>Nobs05</td>
+          <td>5.54 * (RF1 / W05_1) ^ 2 {EP}</td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            USP - United States Pharmacopeia<br>
+            EP - European Pharmacopeia
+          </td>
+        </tr>
+        <tr>
+          <td>selectivity</td>
+          <td>0.25 * (k2 / k1 - 1)</td>
+        </tr>
+        <tr>
+          <td>efficacyBAS</td>
+          <td>(RFavg * NobsBAS) ^ 0.5</td>
+        </tr>
+        <tr>
+          <td>efficacy05</td>
+          <td>(RFavg * Nobs05) ^ 0.5</td>
+        </tr>
+        <tr>
+          <td>retention</td>
+          <td>1 - RFavg</td>
+        </tr>
+        <tr>
+          <td>RSssrBAS</td>
+          <td>selectivity * efficacyBAS * retention</td>
+        </tr>
+        <tr>
+          <td>RSssr05</td>
+          <td>selectivity * efficacy05 * retention</td>
+        </tr>
+      </tbody>
+    </table> 
+    `;
+  let InterPeakhtmlString = `<h2>Inter-Peaks analysis</h2>
+  <br>
+  ${Track_description}
+  <br>
+  `;
   for (let i = 0; i < interPeakParams.length; i++) {
     const element = interPeakParams[i];
     //const raw_element = structuredClone(element);
     //delete raw_element.formulas;
     HTMLfragment = objectToHtml(element); // for now formulas explanation for all peaks
-    InterPeakhtmlString += `<h3>Inter-peak: ${i + 1}</h3>`; // header nr of peak
+    InterPeakhtmlString += `<h3>Inter-peak: ${i + 1} & ${i + 2}</h3>`; // header nr of peak
     InterPeakhtmlString += HTMLfragment;
     InterPeakhtmlString += '<hr>';
   }  

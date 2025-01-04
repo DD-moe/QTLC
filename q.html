@@ -1162,10 +1162,20 @@ async function whole_track_analysis(){ // analysierrr
     PeakMetrices.RF = Rfactor; // peak is index of blurredData
     PeakMetrices.k = Kfactor; // retention factor
     PeakMetrices.RM = Math.log10(Kfactor); // RM factor
-    PeakMetrices.HobsBAS = PeakMetrices.Wbas / 16 / Rfactor, // Hobs at basis
-    PeakMetrices.Hobs05 = PeakMetrices.W05 / 16 / Rfactor, // Hobs at basis at 50% of height
+    PeakMetrices.HobsBAS = Math.pow(PeakMetrices.Wbas, 2) / 16 / Rfactor, // Hobs at basis
+    PeakMetrices.Hobs05 = Math.pow(PeakMetrices.W05, 2) / 5.54 / Rfactor, // Hobs at basis at 50% of height
     PeakMetrices.NobsBAS = 16 * Rfactor / PeakMetrices.Wbas, // nr of theoretical shelves at base of peak
-    PeakMetrices.Nobs05 = 16 * Rfactor / PeakMetrices.W05 // nr of theoretical shelves at 50% of peak
+    PeakMetrices.Nobs05 = 5.54 * Math.pow((Rfactor / PeakMetrices.W05) , 2) // nr of theoretical shelves at 50% of peak
+    PeakMetrices.formulas = `
+    <p>Wbas - peak width at basis</p>
+    <p>W05 - peak width at 50% of height</p>
+    <p>k = ( 1 - RF ) / RF</p>
+    <p>RM = log(k)</p>
+    <p>HobsBAS = Wbas^2 / 16 / RF(Zx)</p>
+    <p>Hobs05 = W05^2 / 5.54 / RF(Zx)</p>
+    <p>NobsBAS = 16 * RF / Wbas</p>
+    <p>Nobs05 = 5.54 * (RF / W05) ^ 2</p>    
+    `;
     peakParams.push(PeakMetrices);
   });
   for (let i = 0; i < mountains.length - 1; i++) {

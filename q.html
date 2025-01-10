@@ -97,8 +97,8 @@ textarea {
   display: none;
 }
 
-#background-canvas, #data-canvas{
-  max-width: 100%;
+#background-canvas, #data-canvas, #trackPrev{
+  width: 100%;
   height: auto;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid #ff0080;
@@ -447,6 +447,11 @@ div.page{
     <canvas id="data-canvas"></canvas>
     <p>Image with background</p>
     <canvas id="background-canvas"></canvas>
+    <canvas id="trackPrev"></canvas>
+    <label for="LeftShift">Left margin - start developing line</label>
+    <input type="number" id="LeftShift" min="0" max="20" value="1" step="0.01">
+    <label for="RightShift">Right margin - end developing line</label>
+    <input type="number" id="RightShift" min="0" max="20" value="1" step="0.01">    
   </div>
 
   <!-- Preview Canvas -->
@@ -502,7 +507,9 @@ div.page{
 <label for="greenFactor">Green channel multiplyer</label>
 <input type="number" id="greenFactor" min="0" max="1" value="0.7152" step="0.0001">    
 <label for="blueFactor">Blue channel multiplyer</label>
-<input type="number" id="blueFactor" min="0" max="1" value="0.0722" step="0.0001">    
+<input type="number" id="blueFactor" min="0" max="1" value="0.0722" step="0.0001">
+<label for="PlateWidth">Width of the analysed plate</label>
+<input type="number" id="PlateWidth" min="0.1" max="20" value="10" step="0.01">    
 <!-- moddels panel -->
 <button id="saveModel">Save Model</button>
 <input type="text" id="modelSearch" placeholder="Search models...">
@@ -577,8 +584,8 @@ div.page{
     const slider_T = document.getElementById('slider_T');
     const sliderValue_T = document.getElementById('slider-value_T');
     const track_analysis = document.getElementById('track_analysis');    
-    // process
-    const processButton = document.getElementById('process-button');
+
+    // canvases
     const dataCanvas = document.getElementById('data-canvas');
     const dataCtx = dataCanvas.getContext('2d');
     const backgroundCanvas = document.getElementById('background-canvas');
@@ -586,7 +593,13 @@ div.page{
     const previewCanvas = document.getElementById('preview-canvas');
     const previewCtx = previewCanvas.getContext('2d'); 
     const rawCanvas = document.getElementById('raw-canvas');
-    const rawCtx = rawCanvas.getContext('2d'); 
+    const rawCtx = rawCanvas.getContext('2d');
+    const trackPrevCanvas = document.getElementById("trackPrev"); 
+    const trackPrevCtx = trackPrevCanvas.getContext("2d"); 
+    const LeftShift = document.getElementById("LeftShift"); 
+    const RightShift = document.getElementById("RightShift"); 
+    // process
+    const processButton = document.getElementById('process-button');
     const percentageInput = document.getElementById("percentageInput");
     const constTreshold = document.getElementById('constTreshold');
     const borderTreshold  = document.getElementById('borderTreshold');
@@ -614,6 +627,7 @@ div.page{
     const redFactor = document.getElementById('redFactor');
     const greenFactor = document.getElementById('greenFactor');
     const blueFactor = document.getElementById('blueFactor');
+    const PlateWidth = document.getElementById('PlateWidth');
     // models management:
     const modelNameInput = document.getElementById('modelName');
     const saveButton = document.getElementById('saveModel');
@@ -648,7 +662,8 @@ div.page{
 
     let current_sum = 0;
     const measurements = []; // 2D array for storing data
-    current_curve = {}; // object to store linear reggression formula
+    let current_curve = {}; // object to store linear reggression formula
+    let trackLength = 1;
 
     sharableData_paste.addEventListener("click",  () => {setSharableData(true)});
     sharableData_copy.addEventListener("click",  getSharableData);
@@ -736,6 +751,9 @@ div.page{
       includeMetadata.checked = data.includeMetadata;
       includeSummary.checked = data.includeSummary;
       track_analysis.checked = data.track_analysis;
+      PlateWidth.value = data.PlateWidth;
+      LeftShift.value = data.LeftShift;
+      RightShift.value = data.RightShift;
       displayFormula(current_curve, 'formuldBox');
       toggleVisibility('model_container', 'model_container_title', data.model_container);
       toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
@@ -791,7 +809,10 @@ div.page{
         includeExplanations: includeExplanations.checked,
         includeMetadata: includeMetadata.checked,
         includeSummary: includeSummary.checked,
-        track_analysis: track_analysis.checked
+        track_analysis: track_analysis.checked,
+        PlateWidth: PlateWidth.value,
+        LeftShift: LeftShift.value,
+        RightShift: RightShift.value
       }
       const textData = JSON.stringify(data);
       if (clipboard) {
@@ -1135,6 +1156,7 @@ async function whole_track_analysis(){ // analysierrr
   // data for chart
   const columnSums = calculateColumnSums(detectedSpotImage);
   const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
+  const maxValue = Math.max(...blurredData);
   //const peaks = findPeaks(blurredData);
   const mountains = analyzeArrayWithKernel(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
   let distances = [];
@@ -1151,7 +1173,7 @@ async function whole_track_analysis(){ // analysierrr
     const startMountain  = mountain.start;
     const endMountain = mountain.end;
     drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
-    const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
+    const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain, maxValue);
     //PeakhtmlString = objectToHtml(PeakMetrices);
     // data for chart
     distances.push(endMountain - startMountain);
@@ -1166,6 +1188,9 @@ async function whole_track_analysis(){ // analysierrr
     PeakMetrices.Hobs05 = Math.pow(PeakMetrices.W05, 2) / 5.54 / Rfactor; // Hobs at basis at 50% of height
     PeakMetrices.NobsBAS = 16 * Rfactor / PeakMetrices.Wbas; // nr of theoretical shelves at base of peak
     PeakMetrices.Nobs05 = 5.54 * Math.pow((Rfactor / PeakMetrices.W05) , 2); // nr of theoretical shelves at 50% of peak
+    PeakMetrices.N_mBAS = PeakMetrices.NobsBAS / trackLength;
+    PeakMetrices.N_m05 = PeakMetrices.Nobs05 / trackLength;
+
     peakParams.push(PeakMetrices);
   });
   for (let i = 0; i < mountains.length - 1; i++) {
@@ -1181,14 +1206,23 @@ async function whole_track_analysis(){ // analysierrr
     const RSz = (Rfactor2 - Rfactor1) / 0.5 / (width2 + width1);
     k2 = (1 - Rfactor2) / Rfactor2;
     k1 = (1 - Rfactor1) / Rfactor1;
-    const selectivity = 0.25 * ( k2 / k1 - 1);
+    let selectivity = 0;
+    let alfa = 0;
+    if (k1 >= k2) {
+      selectivity = 0.25 * ( k1 / k2 - 1); 
+      alfa = k1 / k2;
+    } else { // k2 > k1
+      selectivity = 0.25 * ( k2 / k1 - 1); 
+      alfa = k2/k1;
+    }
     const RFavg = (Rfactor1 + Rfactor2) / 2;
-    const efficacyBAS = Math.sqrt(RFavg * peakParams[i].NobsBAS);
-    const efficacy05 = Math.sqrt(RFavg * peakParams[i].Nobs05);
+    const efficacyBAS = Math.sqrt(RFavg * (peakParams[i].NobsBAS + peakParams[i+1].NobsBAS) / 2);
+    const efficacy05 = Math.sqrt(RFavg * (peakParams[i].Nobs05 + peakParams[i+1].Nobs05) / 2);
     const retention = 1 - RFavg;
     const RSssrBAS = selectivity * retention * efficacyBAS;
     const RSssr05 = selectivity * retention * efficacy05;
     interPeakParams.push({
+      alfa: alfa,
       RSz: RSz,
       RSssrBAS: RSssrBAS,
       RSssr05: RSssr05,
@@ -1235,6 +1269,14 @@ async function whole_track_analysis(){ // analysierrr
           <td>Nobs05</td>
           <td>5.54 * (RF / W05)<sup>2</sup> {EP}</td>
         </tr>
+        <tr>
+          <td>N_mBAS</td>
+          <td>NobsBAS / track length (cm)</td>
+        </tr>        
+        <tr>
+          <td>N_m05</td>
+          <td>Nobs05 / track length (cm)</td>
+        </tr>           
         <tr>
           <td colspan="2">
             USP - United States Pharmacopeia<br>
@@ -1531,7 +1573,95 @@ function findPeaks(arr) {
       updateSlider(slider_T, -50, 50, sliderValue_T);
       rawCanvas.style.display = 'none';
     }
+    // automatization of plate edges detection.
+    if (track_analysis.checked) {
+      trackLength = PlateEdgesDetect();
+    }
   });
+
+function PlateEdgesDetect(){
+    
+    // Get canvas dimensions
+    const canvasWidth = backgroundCanvas.width;
+    const canvasHeight = backgroundCanvas.height;
+
+    // Get image data at 50% height (1px tall strip)
+    const yMid = Math.floor(canvasHeight * 0.5);
+    const xMid = Math.floor(canvasWidth * 0.5);
+    const imageData = bcgCtx.getImageData(0, yMid, canvasWidth, 1).data;
+
+    let plateStart = null;
+    let plateEnd = null;
+
+    // Helper function to calculate pixel brightness
+    const getBrightness = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+
+    // Loop through each pixel to detect transitions
+    for (let x = 0; x < canvasWidth; x++) {
+        const index = x * 4; // Each pixel has 4 values: r, g, b, a
+        const brightness = getBrightness(imageData[index], imageData[index + 1], imageData[index + 2]);
+
+        if (plateStart === null && brightness > 128) {
+            // First transition from dark to bright
+            plateStart = x;
+        } else if (plateStart !== null && plateEnd === null && brightness < 128) {
+            // First transition from bright to dark after start
+            plateEnd = x;
+            break; // Exit early once start and end are found
+        }
+    }
+
+    // Validate detection
+    if (plateStart === null || plateEnd === null) {
+        console.error("Could not detect plate edges.");
+        return parseFloat(PlateWidth.value);
+    }
+
+    // Get image data from 45% to 55% of canvas height
+    const yStart = Math.floor(canvasHeight * 0.45);
+    const sectionHeight = Math.floor(canvasHeight * 0.1);
+    const trackImageData = dataCtx.getImageData(0, yStart, canvasWidth, sectionHeight);
+
+    // Set up trackPrev canvas dimensions
+    trackPrevCanvas.width = canvasWidth;
+    trackPrevCanvas.height = sectionHeight;
+
+    // Draw the extracted data onto trackPrev
+    trackPrevCtx.putImageData(trackImageData, 0, 0);
+
+    // Draw red lines at detected plate edges
+    trackPrevCtx.strokeStyle = "red";
+    trackPrevCtx.lineWidth = 3;
+
+    const distance = plateEnd - plateStart;
+    const leftMargin = Math.round(distance * parseFloat(LeftShift.value) / parseFloat(PlateWidth.value));
+    const rightMargin = Math.round(distance * parseFloat(RightShift.value) / parseFloat(PlateWidth.value));
+    const trueStart = plateStart + leftMargin;
+    const trueEnd = plateEnd - rightMargin; 
+
+    // Start line
+    trackPrevCtx.beginPath();
+    trackPrevCtx.moveTo(trueStart, 0);
+    trackPrevCtx.lineTo(trueStart, sectionHeight);
+    trackPrevCtx.stroke();
+
+    // End line
+    trackPrevCtx.beginPath();
+    trackPrevCtx.moveTo(trueEnd, 0);
+    trackPrevCtx.lineTo(trueEnd, sectionHeight);
+    trackPrevCtx.stroke();    
+
+  // Calculate the desired box width (distance) and left shift from midpoint
+  const desiredDistance = trueEnd - trueStart; // Box width
+  const boxCenter = trueStart + desiredDistance / 2; // Box center position
+  const L_shift = xMid - boxCenter; // Left shift from the midpoint
+
+  // Update the sliders
+  sliderValue_X.textContent = slider_X.value = desiredDistance; // Set box width
+  sliderValue_L.textContent = slider_L.value = L_shift;        // Set center shift
+  return  parseFloat(PlateWidth.value) - parseFloat(RightShift.value) - parseFloat(LeftShift.value);
+}
+
 
  async function peak_analysis(){ // analysierrr
     // make info report page
@@ -1613,6 +1743,7 @@ function findPeaks(arr) {
     // data for chart
     const columnSums = calculateColumnSums(detectedSpotImage);
     const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
+    const maxValue = Math.max(...blurredData);
     //const { startMountain, endMountain } = findMountainRange(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
    const mountains = analyzeArrayWithKernel(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
     const midpoint = Math.round((blurredData.length - 1) / 2);
@@ -1630,7 +1761,7 @@ function findPeaks(arr) {
     //console.log(startMountain, endMountain);
 
     //console.log(startMountain, endMountain, blurredData.length - 1);
-    const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain);
+    const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain, maxValue);
     // report metrices od peak in table
     if (includeParams.checked) {
       const peak_page = ReportaddPage(measureKEY, 'peak');
@@ -2268,13 +2399,14 @@ function findMountainRange(array, maxNeighbours, threshold) {
 }
 
 
-function calculateMountainMetrics(array, start, end) {
+function calculateMountainMetrics(array, start, end, maxVal) {
     const mountain = array.slice(start, end + 1);
     const peakIndex = findPeakIndex(mountain) + start; // Adjust to original array index
     const peakHeight = array[peakIndex];
 
     // Calculate Mountain Properties
     const H = peakHeight - Math.min(...mountain); // Height
+    const h_perc = H / maxVal * 100;
     const baseLevel = Math.min(...mountain);
     const Wbas = end - start;
 
@@ -2307,6 +2439,7 @@ function calculateMountainMetrics(array, start, end) {
         const avgHeight = (mountain[index] + mountain[index - 1]) / 2;
         return area + avgHeight * dx;
     }, 0);
+    const S_perc = S / (maxVal * mountain.length) * 100;
 
     // Calculate A and B at 5% height
     const height05Threshold = baseLevel + 0.05 * H;
@@ -2337,11 +2470,13 @@ function calculateMountainMetrics(array, start, end) {
     // Return Results
     const result = {
         H,
+        h_perc,
         Wbas,
         W05,
         W01,
         W005,
         S,
+        S_perc,
         A05,
         B05,
         A10,

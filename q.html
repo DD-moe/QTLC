@@ -1157,7 +1157,6 @@ async function whole_track_analysis(){ // analysierrr
   const columnSums = calculateColumnSums(detectedSpotImage);
   const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
   const maxValue = Math.max(...blurredData);
-  //const peaks = findPeaks(blurredData);
   const mountains = analyzeArrayWithKernel(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
   let distances = [];
   let peakParams = [];
@@ -1169,19 +1168,19 @@ async function whole_track_analysis(){ // analysierrr
   drawLineChart(blurredData, "chartCanvas");
 
   mountains.forEach( (mountain) => { 
-    peak = findMaxIndex(blurredData, mountain.start, mountain.end);
+    peak = findMaxIndex(columnSums, mountain.start, mountain.end); // PREV#
     const startMountain  = mountain.start;
     const endMountain = mountain.end;
     drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
-    const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain, maxValue);
+    const PeakMetrices = calculateMountainMetrics(columnSums, startMountain, endMountain, maxValue); // PREV#
     //PeakhtmlString = objectToHtml(PeakMetrices);
     // data for chart
     distances.push(endMountain - startMountain);
     starts.push(startMountain);
     ends.push(endMountain);
-    const Rfactor = peak / blurredData.length;
+    const Rfactor = peak / columnSums.length; // PREV#
     const Kfactor = (1 - Rfactor) / Rfactor;
-    PeakMetrices.RF = Rfactor; // peak is index of blurredData
+    PeakMetrices.RF = Rfactor; // peak is index of columnSums
     PeakMetrices.k = Kfactor; // retention factor
     PeakMetrices.RM = Math.log10(Kfactor); // RM factor
     PeakMetrices.HobsBAS = Math.pow(PeakMetrices.Wbas, 2) / 16 / Rfactor; // Hobs at basis
@@ -1196,13 +1195,13 @@ async function whole_track_analysis(){ // analysierrr
   for (let i = 0; i < mountains.length - 1; i++) {
     const mountain1 = mountains[i];
     const mountain2 = mountains[i+1];
-    const peak1 = findMaxIndex(blurredData, mountain1.start, mountain1.end);
-    const peak2 = findMaxIndex(blurredData, mountain2.start, mountain2.end);
+    const peak1 = findMaxIndex(columnSums, mountain1.start, mountain1.end); // PREV#
+    const peak2 = findMaxIndex(columnSums, mountain2.start, mountain2.end); // PREV#
 
-    width2 = (ends[i+1] - starts[i+1]) / blurredData.length;
-    width1 = (ends[i] - starts[i]) / blurredData.length;
-    const Rfactor1 = peak1 / blurredData.length;
-    const Rfactor2 = peak2 / blurredData.length;
+    width2 = (ends[i+1] - starts[i+1]) / columnSums.length; // PREV#
+    width1 = (ends[i] - starts[i]) / columnSums.length; // PREV#
+    const Rfactor1 = peak1 / columnSums.length; // PREV#
+    const Rfactor2 = peak2 / columnSums.length; // PREV#
     const RSz = (Rfactor2 - Rfactor1) / 0.5 / (width2 + width1);
     k2 = (1 - Rfactor2) / Rfactor2;
     k1 = (1 - Rfactor1) / Rfactor1;
@@ -1743,7 +1742,7 @@ function PlateEdgesDetect(){
     // data for chart
     const columnSums = calculateColumnSums(detectedSpotImage);
     const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
-    const maxValue = Math.max(...blurredData);
+    const maxValue = Math.max(...columnSums); // PREV#
     //const { startMountain, endMountain } = findMountainRange(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
    const mountains = analyzeArrayWithKernel(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
     const midpoint = Math.round((blurredData.length - 1) / 2);
@@ -1761,7 +1760,7 @@ function PlateEdgesDetect(){
     //console.log(startMountain, endMountain);
 
     //console.log(startMountain, endMountain, blurredData.length - 1);
-    const PeakMetrices = calculateMountainMetrics(blurredData, startMountain, endMountain, maxValue);
+    const PeakMetrices = calculateMountainMetrics(columnSums, startMountain, endMountain, maxValue); // PREV#
     // report metrices od peak in table
     if (includeParams.checked) {
       const peak_page = ReportaddPage(measureKEY, 'peak');
@@ -1772,7 +1771,7 @@ function PlateEdgesDetect(){
 
 
     const PeakhtmlString = objectToHtml(PeakMetrices);
-    drawLineChart(blurredData, "chartCanvas");
+    drawLineChart(blurredData, "chartCanvas"); 
     drawVerticalLines('chartCanvas', startMountain, endMountain, blurredData.length-1);
     // data for chart
     previewCtx.putImageData(detectedSpotImage, 0, 0);

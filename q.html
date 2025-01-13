@@ -2243,8 +2243,12 @@ function blurArray(inputArray, kernelSize) {
                 count++;
             }
         }
-
-        outputArray[i] = sum / count;
+        if (inputArray[i] === 0) {
+          outputArray[i] = 0;
+        }
+        else{
+          outputArray[i] = sum / count;
+        }
     }
     return outputArray;
 }

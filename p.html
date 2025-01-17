@@ -80,6 +80,8 @@
         const saveButton = document.getElementById('saveBlocks');
         const uncheckBlock = document.getElementById('uncheckBlock');
         const add_Block = document.getElementById('add_Block');
+        let left = 0;
+        let width = 0;
 
         let blocks = [];
         let selectedBlock = null;
@@ -118,6 +120,8 @@
             }
             block.style.backgroundColor = 'rgba(255, 140, 0, 0.8)';
             selectedBlock = blocks[index];
+            left = parseInt(selectedBlock.element.style.left, 10);
+            width = parseInt(selectedBlock.element.style.width, 10);
         }
 
         // Delete choosen block
@@ -140,8 +144,6 @@
         [moveLeftSlider, moveRightSlider].forEach(slider => {
             slider.addEventListener('input', () => {
                 if (selectedBlock) {
-                    const left = parseInt(selectedBlock.element.style.left, 10);
-                    const width = parseInt(selectedBlock.element.style.width, 10);
                     const moveLeft = parseInt(moveLeftSlider.value, 10);
                     const moveRight = parseInt(moveRightSlider.value, 10);
 

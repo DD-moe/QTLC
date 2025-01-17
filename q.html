@@ -429,13 +429,15 @@ div.page{
       <label for="kernelValleyTreshols">Kernel for valley detection in pixels</label>
       <input type="number" id="kernelValleyTreshols" min="1" max="5" value="3">
       <label for="track_analysis">analyse whole track instead of single peak</label>
-      <input type="checkbox" id="track_analysis">          
+      <input type="checkbox" id="track_analysis">         
     </div>
 </div>
 
 
   <!-- Processing site -->
   <button id="process-button">Process</button>
+  <label for="track_manual">Use manual peaks borders</label>
+  <input type="checkbox" id="track_manual"> 
   <h2 id="predictionBox">Predicted value: </h2>
   <label for="measurmentComment">Measurement name or comment</label>
   <input type="text" id="measurmentComment">   
@@ -600,6 +602,7 @@ div.page{
     const RightShift = document.getElementById("RightShift"); 
     // process
     const processButton = document.getElementById('process-button');
+    const track_manual = document.getElementById('track_manual');
     const percentageInput = document.getElementById("percentageInput");
     const constTreshold = document.getElementById('constTreshold');
     const borderTreshold  = document.getElementById('borderTreshold');
@@ -1153,11 +1156,25 @@ async function whole_track_analysis(){ // analysierrr
   const percentage = parseFloat(percentageInput.value);
   const detectedSpotImage = processImageData(normalised, percentage);  
 
-  // data for chart
   const columnSums = calculateColumnSums(detectedSpotImage);
   const blurredData = blurArray(columnSums, parseInt(chart_blurr.value)); // Kernel size of 5
   const maxValue = Math.max(...blurredData);
-  const mountains = analyzeArrayWithKernel(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
+  // data for chart
+  let mountains = [];
+  if (track_manual.checked) { // use manually corrected data
+    const mountains_data = JSON.parse(localStorage.getItem('mountains')) || [];
+    if (mountains_data.legth !== 0) {
+      mountains = mountains_data;
+    }
+    else{
+      mountains = analyzeArrayWithKernel(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
+      localStorage.setItem('mountains', JSON.stringify(mountains));
+    }
+  }
+  else{
+    mountains = analyzeArrayWithKernel(blurredData, parseInt(kernelValleyTreshols.value), parseInt(borderTreshold.value));
+    localStorage.setItem('mountains', JSON.stringify(mountains));
+  }
   let distances = [];
   let peakParams = [];
   let interPeakParams = [];

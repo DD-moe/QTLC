@@ -1174,6 +1174,8 @@ async function whole_track_analysis(){ // analysierrr
     mountains = analyzeArrayWithKernel(blurredData, kernelThreshold, borderThreshold);
     localStorage.removeItem('mountains');
     localStorage.removeItem('track_image');
+    localStorage.removeItem('is_track');
+    localStorage.removeItem('rawData');
   }
 
   let distances = [];
@@ -1798,6 +1800,8 @@ function PlateEdgesDetect(){
     } else {
       localStorage.removeItem('mountains');
       localStorage.removeItem('track_image');
+      localStorage.removeItem('is_track');
+      localStorage.removeItem('rawData');
     }
     //console.log(startMountain, endMountain, blurredData.length - 1);
     const PeakMetrices = calculateMountainMetrics(columnSums, startMountain, endMountain, maxValue); // PREV#

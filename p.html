@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TLC peak manual selection</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            position: relative;
+            display: inline-block;
+            margin: 0;
+            padding: 0;
+        }
+        #image {
+            margin: 0;
+            padding: 0;
+        }
+        .block {
+            position: absolute;
+            background-color: rgba(255, 165, 0, 0.5);
+            border: 1px solid red;
+            color: black;
+            text-align: center;
+            line-height: 100%;
+            pointer-events: auto;
+        }
+        #controls {
+            position: fixed;
+            bottom: 0;
+            width: 100vw;
+            background: #fff;
+            padding: 10px;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+            display: block;
+        }
+        button {
+            padding: 10px 20px;
+        }
+        input[type="range"], input[type="number"] {
+            width: 50%;
+        }
+        input[type="text"], input[type="number"] {
+            width: 20%;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <img id="image" alt="Unable to load 'track image'!" />
+    </div>
+    <div id="controls">
+        <label>Move left: <input id="moveLeft" type="range" min="-50" max="50" value="0"></label>
+        <br>
+        <label>Move rigth: <input id="moveRight" type="range" min="-50" max="50" value="0"></label>
+        <br>
+        <label>Slider Range: <input id="rangeX" type="number" value="50"></label>
+        <button id="saveBlocks">Save changes</button>
+        <button id="deleteBlock">Remove block</button>
+        <button id="uncheckBlock">Uncheck block</button>
+        <button id="add_Block">Add block</button>
+        <div id="image-dimensions">
+            x: <span id="image-width"></span>px, y: <span id="image-height"></span>px
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('container');
+        const image = document.getElementById('image');
+        const widthDisplay = document.getElementById("image-width");
+        const heightDisplay = document.getElementById("image-height");
+        const deleteButton = document.getElementById('deleteBlock');
+        const moveLeftSlider = document.getElementById('moveLeft');
+        const moveRightSlider = document.getElementById('moveRight');
+        const rangeInput = document.getElementById('rangeX');
+        const saveButton = document.getElementById('saveBlocks');
+        const uncheckBlock = document.getElementById('uncheckBlock');
+        const add_Block = document.getElementById('add_Block');
+
+        let blocks = [];
+        let selectedBlock = null;
+
+        // Load data from local storage
+        const imageSrc = localStorage.getItem('track_image');
+        const mountains = JSON.parse(localStorage.getItem('mountains')) || [];
+
+        // Load image
+        if (imageSrc) {
+            image.src = imageSrc;
+        }
+
+        image.onload = () => {
+            const imageHeight = image.offsetHeight;
+            updateImageDimensions();
+            mountains.forEach((mountain, index) => {
+                const block = document.createElement('div');
+                block.className = 'block';
+                block.style.height = `${imageHeight}px`;
+                block.style.width = `${mountain.end - mountain.start}px`;
+                block.style.left = `${mountain.start}px`;
+                block.style.top = `${image.offsetTop}px`;
+                block.innerText = index + 1;
+
+                block.addEventListener('click', () => selectBlock(block, index));
+                container.appendChild(block);
+                blocks.push({ element: block, ...mountain });
+            });
+        };
+
+        // Select block
+        function selectBlock(block, index) {
+            if (selectedBlock) {
+                selectedBlock.element.style.backgroundColor = 'rgba(255, 165, 0, 0.5)';
+            }
+            block.style.backgroundColor = 'rgba(255, 140, 0, 0.8)';
+            selectedBlock = blocks[index];
+        }
+
+        // Delete choosen block
+        deleteButton.addEventListener('click', () => {
+            if (selectedBlock) {
+                container.removeChild(selectedBlock.element);
+                blocks = blocks.filter(b => b !== selectedBlock);
+                selectedBlock = null;
+                updateBlockNumbers();
+            }
+        });
+
+        // Un select block
+        uncheckBlock.addEventListener('click', () => {
+            selectedBlock = null;
+            updateBlockNumbers();
+        });
+
+        // Transit block borders
+        [moveLeftSlider, moveRightSlider].forEach(slider => {
+            slider.addEventListener('input', () => {
+                if (selectedBlock) {
+                    const left = parseInt(selectedBlock.element.style.left, 10);
+                    const width = parseInt(selectedBlock.element.style.width, 10);
+                    const moveLeft = parseInt(moveLeftSlider.value, 10);
+                    const moveRight = parseInt(moveRightSlider.value, 10);
+
+                    selectedBlock.start = Math.max(0, left + moveLeft);
+                    selectedBlock.end = Math.min(image.offsetWidth, left + width + moveRight);
+                    selectedBlock.element.style.left = `${selectedBlock.start}px`;
+                    selectedBlock.element.style.width = `${selectedBlock.end - selectedBlock.start}px`;
+                }
+            });
+        });
+
+        // Save blocks to local storage
+        saveButton.addEventListener('click', () => {
+            const newMountains = blocks.map(({ start, end }) => ({ start, end }));
+            localStorage.setItem('mountains', JSON.stringify(newMountains));
+            alert('Blocks saved succesfully!');
+        });
+
+        // Actualise blocks numeration
+        function updateBlockNumbers() {
+            blocks.forEach((block, index) => {
+                block.element.innerText = index + 1;
+            });
+        }
+
+        function addNewBlock() {
+            if (!blocks || blocks.length === 0) {
+                // No blocks available, add a new block at position 0 with a width of 100px
+                const newBlock = {
+                    start: 0,
+                    end: Math.min(100, image.width), // Ensure it doesn't exceed the image width
+                };
+
+                blocks.push(newBlock);
+            } else if (!selectedBlock) {
+                alert("Please select a block first!");
+                return;
+            } else {
+                // Get the position and dimensions of the selected block
+                const selectedBlockEnd = selectedBlock.start + selectedBlock.width;
+
+                // Create a new block next to the selected block
+                const newBlock = {
+                    start: Math.min(selectedBlockEnd, image.width - 50), // Ensure it doesn't exceed the image width
+                    end: Math.min(selectedBlockEnd + 50, image.width),   // 50px width or as much space as available
+                };
+
+                blocks.push(newBlock);
+            }
+
+            // Update block numbers
+            updateBlockNumbers();
+        }
+
+
+        function updateImageDimensions() {
+            widthDisplay.textContent = image.naturalWidth || image.width;
+            heightDisplay.textContent = image.naturalHeight || image.height;
+        }
+
+        add_Block.addEventListener('click', () => {
+            addNewBlock();
+        });
+    </script>
+</body>
+</html>

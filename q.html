@@ -1167,7 +1167,7 @@ async function whole_track_analysis(){ // analysierrr
   const kernelThreshold = parseInt(kernelValleyTreshols.value);
   const borderThreshold = parseInt(borderTreshold.value);
 
-  if (track_manual.checked && localStorage.getItem('is_track') == true) { // use manually corrected data
+  if (track_manual.checked && localStorage.getItem('is_track') === 'true') { // use manually corrected data
     const mountains_data = JSON.parse(localStorage.getItem('mountains')) || [];
     mountains = mountains_data.length !== 0 ? mountains_data : analyzeArrayWithKernel(blurredData, kernelThreshold, borderThreshold);
   } else {
@@ -1188,7 +1188,7 @@ async function whole_track_analysis(){ // analysierrr
     localStorage.setItem('mountains', JSON.stringify(mountains));
     const Block_Raw_Data = previewCanvas.toDataURL();
     localStorage.setItem('track_image', Block_Raw_Data);
-    localStorage.setItem('is_track', true);
+    localStorage.setItem('is_track', 'true');
   }
   
 
@@ -1788,7 +1788,7 @@ function PlateEdgesDetect(){
     const kernelThreshold = parseInt(kernelValleyTreshols.value);
     const borderThreshold = parseInt(borderTreshold.value);
 
-    if (track_manual.checked && localStorage.getItem('is_track') == false) { // use manually corrected data
+    if (track_manual.checked && localStorage.getItem('is_track') === 'false') { // use manually corrected data
       const mountain_data = JSON.parse(localStorage.getItem('mountains')) || [];
       if (mountains_data.length !== 0){ // there are data
         startMountain  = mountain_data.start;
@@ -1820,7 +1820,7 @@ function PlateEdgesDetect(){
       localStorage.setItem('mountains', JSON.stringify(mountains));
       const Block_Raw_Data = previewCanvas.toDataURL();
       localStorage.setItem('track_image', Block_Raw_Data);
-      localStorage.setItem('is_track', false);
+      localStorage.setItem('is_track', 'false');
     }    
 
     const spotMetrics = calculateSum(detectedSpotImage);

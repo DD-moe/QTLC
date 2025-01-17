@@ -1189,6 +1189,7 @@ async function whole_track_analysis(){ // analysierrr
     const Block_Raw_Data = previewCanvas.toDataURL();
     localStorage.setItem('track_image', Block_Raw_Data);
     localStorage.setItem('is_track', 'true');
+    localStorage.setItem('rawData', JSON.stringify(blurredData));
   }
   
 
@@ -1817,10 +1818,11 @@ function PlateEdgesDetect(){
 
     // set image to localhost:
     if (track_manual.checked){
-      localStorage.setItem('mountains', JSON.stringify(mountains));
+      localStorage.setItem('mountains', JSON.stringify({start : startMountain, end: endMountain}));
       const Block_Raw_Data = previewCanvas.toDataURL();
       localStorage.setItem('track_image', Block_Raw_Data);
-      localStorage.setItem('is_track', 'false');
+      localStorage.setItem('is_track', 'false'); 
+      localStorage.setItem('rawData', JSON.stringify(blurredData));
     }    
 
     const spotMetrics = calculateSum(detectedSpotImage);

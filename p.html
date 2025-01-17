@@ -20,7 +20,7 @@
             max-width: 100vw; /* Ensure it fits within the viewport width */
             box-sizing: border-box; /* Include padding and borders in the element's width */
         }
-        #image {
+        #image, #canvas {
             margin: 0;
             padding: 0;
         }
@@ -56,6 +56,7 @@
 <body>
     <div id="container">
         <img id="image" alt="Unable to load 'track image'!" />
+        <canvas id="canvas"></canvas>
     </div>
     <div id="controls">
         <label>Move left: <input id="moveLeft" type="range" min="-50" max="50" value="0"></label>
@@ -84,6 +85,8 @@
         const saveButton = document.getElementById('saveBlocks');
         const uncheckBlock = document.getElementById('uncheckBlock');
         const add_Block = document.getElementById('add_Block');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
         let left = 0;
         let width = 0;
 
@@ -93,6 +96,31 @@
         // Load data from local storage
         const imageSrc = localStorage.getItem('track_image');
         const mountains = JSON.parse(localStorage.getItem('mountains')) || [];
+        const rawData = JSON.parse(localStorage.getItem('rawData')) || [];
+        if (rawData.length > 0) {
+            // Set canvas dimensions
+            canvas.width = rawData.length;
+            canvas.height = 250;
+            // Find min and max in the raw data
+            const minValue = Math.min(...rawData);
+            const maxValue = Math.max(...rawData);      
+            // Normalize data to fit the range 0 to 250
+            const normalizedData = rawData.map(value => 
+                ((value - minValue) / (maxValue - minValue)) * 250
+            );
+            // Draw the chart on the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - normalizedData[0]); // Start at the first data point
+
+            normalizedData.forEach((value, index) => {
+                ctx.lineTo(index, canvas.height - value); // Draw line to each normalized point
+            });
+
+            ctx.strokeStyle = 'orange';
+            ctx.lineWidth = 2;
+            ctx.stroke();                  
+        }
 
         // Load image
         if (imageSrc) {
@@ -105,7 +133,7 @@
             mountains.forEach((mountain, index) => {
                 const block = document.createElement('div');
                 block.className = 'block';
-                block.style.height = `${imageHeight}px`;
+                block.style.height = `${imageHeight + 250}px`;
                 block.style.width = `${mountain.end - mountain.start}px`;
                 block.style.left = `${mountain.start}px`;
                 block.style.top = `${image.offsetTop}px`;

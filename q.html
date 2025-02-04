@@ -429,7 +429,11 @@ div.page{
       <label for="kernelValleyTreshols">Kernel for valley detection in pixels</label>
       <input type="number" id="kernelValleyTreshols" min="1" max="5" value="3">
       <label for="track_analysis">analyse whole track instead of single peak</label>
-      <input type="checkbox" id="track_analysis">         
+      <input type="checkbox" id="track_analysis">
+      <label for="data_blurr">Data Image Blurr kernel size</label>
+      <input type="number" id="data_blurr" min="1" max="10" value="2">
+      <label for="bcg_blurr">Background Image Blurr kernel size</label>
+      <input type="number" id="bcg_blurr" min="1" max="25" value="5">                           
     </div>
 </div>
 
@@ -604,6 +608,8 @@ div.page{
     const LeftShift = document.getElementById("LeftShift"); 
     const RightShift = document.getElementById("RightShift"); 
     // process
+    const bcg_blurr = document.getElementById('bcg_blurr');
+    const data_blurr = document.getElementById('data_blurr');
     const processButton = document.getElementById('process-button');
     const track_manual = document.getElementById('track_manual');
     const percentageInput = document.getElementById("percentageInput");
@@ -760,6 +766,8 @@ div.page{
       PlateWidth.value = data.PlateWidth;
       LeftShift.value = data.LeftShift;
       RightShift.value = data.RightShift;
+      bcg_blurr.value = data.bcg_blurr;
+      data_blurr.value = data.data_blurr;
       displayFormula(current_curve, 'formuldBox');
       toggleVisibility('model_container', 'model_container_title', data.model_container);
       toggleVisibility('curve_container', 'curve_container_title', data.curve_container);
@@ -818,7 +826,9 @@ div.page{
         track_analysis: track_analysis.checked,
         PlateWidth: PlateWidth.value,
         LeftShift: LeftShift.value,
-        RightShift: RightShift.value
+        RightShift: RightShift.value,
+        bcg_blurr : bcg_blurr.value,
+        data_blurr : data_blurr.value
       }
       const textData = JSON.stringify(data);
       if (clipboard) {
@@ -1139,7 +1149,7 @@ async function whole_track_analysis(){ // analysierrr
   // ^^^ create preview data
   const grayData = toGrayscale(imageData, r, g, b);
   previewCtx.putImageData(grayData, 0, 0);
-  previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
+  previewCtx.filter = `blur(${data_blurr.value}px)`; // Set blur amount (e.g., 5px)
   previewCtx.drawImage(previewCanvas, 0, 0);   
   previewCtx.filter = 'none';
   const readyData = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
@@ -1148,7 +1158,7 @@ async function whole_track_analysis(){ // analysierrr
   const bcgData = bcgCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);      
   const grayBcg = toGrayscale(bcgData, r, g, b);
   previewCtx.putImageData(grayBcg, 0, 0);
-  previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
+  previewCtx.filter = `blur(${bcg_blurr.value}px)`; // Set blur amount (e.g., 5px)
   previewCtx.drawImage(previewCanvas, 0, 0);   
   previewCtx.filter = 'none';
   const readyBcg = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
@@ -1733,7 +1743,7 @@ function PlateEdgesDetect(){
     const imageData = dataCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);
     const grayData = toGrayscale(imageData, r, g, b);
     previewCtx.putImageData(grayData, 0, 0);
-    previewCtx.filter = 'blur(2px)'; // Set blur amount (e.g., 5px)
+    previewCtx.filter = `blur(${data_blurr.value}px)`; // Set blur amount (e.g., 5px)
     previewCtx.drawImage(previewCanvas, 0, 0);   
     previewCtx.filter = 'none';
     const readyData = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
@@ -1742,7 +1752,7 @@ function PlateEdgesDetect(){
     const bcgData = bcgCtx.getImageData(startX, startY, boxSize_X, boxSize_Y);      
     const grayBcg = toGrayscale(bcgData, r, g, b);
     previewCtx.putImageData(grayBcg, 0, 0);
-    previewCtx.filter = 'blur(5px)'; // Set blur amount (e.g., 5px)
+    previewCtx.filter = `blur(${bcg_blurr.value}px)`; // Set blur amount (e.g., 5px)
     previewCtx.drawImage(previewCanvas, 0, 0);   
     previewCtx.filter = 'none';
     const readyBcg = previewCtx.getImageData(10, 10, boxSize_X-20, boxSize_Y-20);
